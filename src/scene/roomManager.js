@@ -2,13 +2,13 @@
 // Room system: time-slot + roomLight (on/off) using 2-sprite crossfade.
 // - Slots decide base key by time (dawn/day/sunset/evening/night)
 // - roomLight decides suffix (_off/_on)
-// - If time-slot and light change at the same moment -> ONE fade to final image (Option A)
+// - If time-slot changes -> crossfade
+// - If only light changes -> instant switch (NO fade)
 
 export class RoomManager {
   constructor(container){
     this.container = container;
 
-    // 2 sprites for crossfade
     this.spriteA = new PIXI.Sprite();
     this.spriteB = new PIXI.Sprite();
     this.container.addChild(this.spriteA);
@@ -17,22 +17,21 @@ export class RoomManager {
     this.spriteA.alpha = 0;
     this.spriteB.alpha = 0;
 
-    this._active = "A"; // A means spriteA is the current visible one
+    this._active = "A";
 
-    this._slots = []; // [{startMin, key}]
+    this._slots = [];
     this._basePath = "assets/scene/room/";
     this._filePattern = "{key}_{light}.png";
 
     this._fadeSec = 3.0;
-    this._lightFadeSec = 0.5;
+    this._lightFadeSec = 0.5; // ไม่ใช้แล้ว แต่เก็บไว้เผื่อ config เดิม
 
     this._rect = { x: 0, y: 0, w: 100, h: 100 };
-
     this._texByUrl = new Map();
 
-    // state
     this._currentSlotKey = null;
     this._currentLight = "off";
+
     this._isFading = false;
     this._fadeT = 0;
     this._fadeDur = 1;
@@ -56,7 +55,6 @@ export class RoomManager {
       .filter(s => s.key && s.startMin !== null)
       .sort((a,b)=>a.startMin-b.startMin);
 
-    // preload: slots × {off,on}
     const urls = new Set();
     for(const s of this._slots){
       urls.add(this._buildUrl(s.key, "off"));
@@ -81,7 +79,6 @@ export class RoomManager {
     const slotKey = this._getSlotKey(now);
     const light = (storyState?.roomLight ?? storyState?.state?.roomLight ?? "off") === "on" ? "on" : "off";
 
-    // first paint (no fade-in)
     if(this._currentSlotKey === null){
       this._currentSlotKey = slotKey;
       this._currentLight = light;
@@ -94,7 +91,6 @@ export class RoomManager {
       return;
     }
 
-    // fade in progress
     if(this._isFading){
       this._fadeT += dtSec;
       const t = Math.min(1, this._fadeT / this._fadeDur);
@@ -115,13 +111,24 @@ export class RoomManager {
 
     if(!slotChanged && !lightChanged) return;
 
-    // Option A: if slot changed (even if light also changed), do ONE fade to final image
-    const fadeDur = slotChanged ? this._fadeSec : this._lightFadeSec;
+    // ✅ ถ้าเปลี่ยนช่วงเวลา → crossfade เหมือนเดิม
+    if(slotChanged){
+      this._startFade(slotKey, light, this._fadeSec);
+      this._currentSlotKey = slotKey;
+      this._currentLight = light;
+      return;
+    }
 
-    this._startFade(slotKey, light, fadeDur);
+    // ✅ ถ้าเปลี่ยนแค่ไฟ → instant switch (ไม่มี fade)
+    if(lightChanged){
+      const activeSpr = (this._active === "A") ? this.spriteA : this.spriteB;
 
-    this._currentSlotKey = slotKey;
-    this._currentLight = light;
+      this._setSprite(activeSpr, slotKey, light);
+      activeSpr.alpha = 1;
+
+      this._currentLight = light;
+      return;
+    }
   }
 
   _startFade(slotKey, light, fadeDur){
@@ -181,8 +188,6 @@ export class RoomManager {
 
   _getSlotKey(now){
     const tMin = now.getHours() * 60 + now.getMinutes();
-
-    // pick last slot whose start <= now
     let pick = this._slots[0];
     for(const s of this._slots){
       if(tMin >= s.startMin) pick = s;
