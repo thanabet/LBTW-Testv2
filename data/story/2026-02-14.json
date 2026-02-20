@@ -3,13 +3,11 @@
   "date": "2026-02-14",
   "events": [
     {
-      "time": "06:30",
+      "time": "05:40",
       "state": {
         "profileCardSrc": "assets/cards/profile_card.png",
         "scheduleCardSrc": "assets/cards/schedule_card.png",
-
-        "cloudProfile": "overcast",
-
+        "cloudProfile": "none",
         "emotion": "normal",
         "portraitAnim": {
           "frames": ["normal_1", "normal_2"],
@@ -22,23 +20,22 @@
           "loop": true
         },
         "statusIcon": "book",
-        "status": "STATUS : WAKE UP",
-        "mood": "MOOD : SLEEPY",
+        "status": "STATUS : DAWN",
+        "mood": "MOOD : QUIET",
         "dialogue": {
-          "th": "เช้านี้อากาศดี…",
-          "en": "Nice morning..."
+          "th": "เช้ามืดเงียบสงบ...",
+          "en": "Quiet dawn..."
         },
-        "inRoom": ["army", "fai"]
+        "inRoom": ["army"],
+        "roomLight": "off"
       }
     },
     {
-      "time": "15:34",
+      "time": "08:00",
       "state": {
         "profileCardSrc": "assets/cards/profile_card.png",
         "scheduleCardSrc": "assets/cards/schedule_card.png",
-
-        "cloudProfile": "overcast",
-
+        "cloudProfile": "few",
         "emotion": "normal",
         "portraitAnim": {
           "frames": ["normal_1", "normal_2"],
@@ -51,16 +48,99 @@
           "loop": true
         },
         "statusIcon": "book",
-        "status": "STATUS : READING",
-        "mood": "MOOD : FOCUSED",
+        "status": "STATUS : MORNING",
+        "mood": "MOOD : FRESH",
         "dialogue": {
-          "th": "พรุ่งนี้ต้องอ่านให้จบ…",
-          "en": "I must finish it..."
+          "th": "เช้าแล้ว เริ่มวันใหม่",
+          "en": "Morning."
         },
-        "inRoom": ["army", "fai", "poon"]
+        "inRoom": ["army", "fai"],
+        "roomLight": "off"
+      }
+    },
+    {
+      "time": "17:30",
+      "state": {
+        "profileCardSrc": "assets/cards/profile_card.png",
+        "scheduleCardSrc": "assets/cards/schedule_card.png",
+        "cloudProfile": "few",
+        "emotion": "normal",
+        "portraitAnim": {
+          "frames": ["normal_1", "normal_2"],
+          "durationsMs": [6000, 90],
+          "loop": true
+        },
+        "statusIconAnim": {
+          "frames": ["book_1", "book_2", "book_3"],
+          "durationsMs": [8000, 200, 200],
+          "loop": true
+        },
+        "statusIcon": "book",
+        "status": "STATUS : SUNSET",
+        "mood": "MOOD : CALM",
+        "dialogue": {
+          "th": "พระอาทิตย์กำลังตก...",
+          "en": "Sunset..."
+        },
+        "inRoom": ["army", "fai", "poon"],
+        "roomLight": "off"
+      }
+    },
+    {
+      "time": "19:00",
+      "state": {
+        "profileCardSrc": "assets/cards/profile_card.png",
+        "scheduleCardSrc": "assets/cards/schedule_card.png",
+        "cloudProfile": "overcast",
+        "emotion": "normal",
+        "portraitAnim": {
+          "frames": ["normal_1", "normal_2"],
+          "durationsMs": [6000, 90],
+          "loop": true
+        },
+        "statusIconAnim": {
+          "frames": ["book_1", "book_2", "book_3"],
+          "durationsMs": [8000, 200, 200],
+          "loop": true
+        },
+        "statusIcon": "book",
+        "status": "STATUS : EVENING",
+        "mood": "MOOD : RELAXED",
+        "dialogue": {
+          "th": "เปิดไฟแล้ว...",
+          "en": "Lights on."
+        },
+        "inRoom": ["army"],
+        "roomLight": "on"
+      }
+    },
+    {
+      "time": "22:30",
+      "state": {
+        "profileCardSrc": "assets/cards/profile_card.png",
+        "scheduleCardSrc": "assets/cards/schedule_card.png",
+        "cloudProfile": "none",
+        "emotion": "normal",
+        "portraitAnim": {
+          "frames": ["normal_1", "normal_2"],
+          "durationsMs": [6000, 90],
+          "loop": true
+        },
+        "statusIconAnim": {
+          "frames": ["book_1", "book_2", "book_3"],
+          "durationsMs": [8000, 200, 200],
+          "loop": true
+        },
+        "statusIcon": "book",
+        "status": "STATUS : NIGHT",
+        "mood": "MOOD : SLEEPY",
+        "dialogue": {
+          "th": "ดึกแล้ว...",
+          "en": "Late night..."
+        },
+        "inRoom": ["army"],
+        "roomLight": "on"
       }
     }
   ]
 }
-
-

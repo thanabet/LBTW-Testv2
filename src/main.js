@@ -91,6 +91,10 @@ async function boot(){
   const cloudCfg = await loadJSON("./data/cloud_config.json");
   await scene.initClouds(cloudCfg);
 
+  // --- ROOM (NEW) ---
+  const roomCfg = await loadJSON("./data/room_config.json");
+  await scene.initRoom(roomCfg);
+
   // --- RAIN (NEW) ---
   const rainCfg = await loadJSON("./data/rain_config.json");
   await scene.initRain(rainCfg);
@@ -134,7 +138,7 @@ async function boot(){
     hud.setCalendar(now);
     hud.setClockHands(now);
 
-    // ✅ NEW: Audio follows state (starts silent; user must tap buttons)
+    // ✅ Audio follows state (starts silent; user must tap buttons)
     audio.applyStoryState(now, nextState);
 
     requestAnimationFrame(tick);

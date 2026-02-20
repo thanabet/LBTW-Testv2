@@ -1,6 +1,7 @@
 import { SkyManager } from "./skyManager.js";
 import { CloudManager } from "./cloudManager.js";
 import { RainManager } from "./rainManager.js";
+import { RoomManager } from "./roomManager.js";
 
 const CLOUD_PROFILE_FADE_SEC = 60.0;
 
@@ -33,6 +34,11 @@ export class SceneEngine {
     this.rainContainer = null;
     this.rain = null;
     this._rainReady = false;
+
+    // room layer (below rain, above clouds)
+    this.roomContainer = null;
+    this.room = null;
+    this._roomReady = false;
 
     // ✅ remember current lightning state to avoid spamming setters
     this._lastLightningEnabled = null;
@@ -68,11 +74,13 @@ export class SceneEngine {
     // stage layers
     this.skyContainer = new PIXI.Container();
     this.cloudContainer = new PIXI.Container();
+    this.roomContainer = new PIXI.Container();
     this.rainContainer = new PIXI.Container();
 
-    // order: sky -> clouds -> rain
+    // order: sky -> clouds -> room -> rain (rain/lightning always top)
     this.app.stage.addChild(this.skyContainer);
     this.app.stage.addChild(this.cloudContainer);
+    this.app.stage.addChild(this.roomContainer);
     this.app.stage.addChild(this.rainContainer);
 
     // 2 alpha layers for clouds
@@ -138,6 +146,19 @@ export class SceneEngine {
 
     if(this.sceneRectPx){
       this.rain.resizeToRect(this.sceneRectPx);
+    }
+  }
+
+  async initRoom(roomConfig){
+    await this._ensurePixi();
+
+    this.room = new RoomManager(this.roomContainer);
+    await this.room.load(roomConfig);
+
+    this._roomReady = true;
+
+    if(this.sceneRectPx){
+      this.room.resizeToRect(this.sceneRectPx);
     }
   }
 
@@ -234,6 +255,8 @@ export class SceneEngine {
     if(this.cloudsA) this.cloudsA.resizeToRect(this.sceneRectPx);
     if(this.cloudsB) this.cloudsB.resizeToRect(this.sceneRectPx);
 
+    if(this.room) this.room.resizeToRect(this.sceneRectPx);
+
     if(this.rain) this.rain.resizeToRect(this.sceneRectPx);
   }
 
@@ -326,6 +349,11 @@ export class SceneEngine {
       }
 
       this.rain.update(dtSec);
+    }
+
+    // room (time-slot + roomLight on/off)
+    if(this._roomReady && this.room){
+      this.room.update(now, dtSec, storyState);
     }
   }
 }
