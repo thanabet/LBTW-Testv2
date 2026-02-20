@@ -1,0 +1,46 @@
+{
+  "templateSize": { "w": 1595, "h": 3457 },
+
+  "portrait": { "x": 8.5, "y": 48, "w": 21, "h": 21 },
+  "statusIcon": { "x": 40.5, "y": 50.1, "w": 10, "h": 10 },
+
+  "calendar": {
+    "month": { "x": 86, "y": 52, "w": 8, "h": 3.2, "align": "center" },
+    "day":   { "x": 87, "y": 55, "w": 8, "h": 5.0, "align": "center" }
+  },
+
+  "clock": {
+    "center": { "x": 70.5, "y": 54.9 },
+    "hourLenPctOfScreenW": 2.7,
+    "minLenPctOfScreenW": 3.8,
+    "thicknessPx": 3
+  },
+
+  "statusText": { "x": 45, "y": 60.2, "w": 40, "h": 3.5, "align": "center" },
+  "moodText":   { "x": 49, "y": 64.8, "w": 40, "h": 3.5, "align": "center" },
+
+  "dialogue": {
+    "x": 4, "y": 67, "w": 76, "h": 12,
+    "tapToToggleLang": true
+  },
+
+  "inRoom": {
+    "slots": [
+      { "x": 26, "y": 80.7, "w": 14, "h": 7 },
+      { "x": 40, "y": 80.7, "w": 14, "h": 7 },
+      { "x": 54, "y": 80.7, "w": 14, "h": 7 }
+    ]
+  },
+
+  "logoHotspot": { "x": 77, "y": 81, "w": 15, "h": 6 },
+  "intromieUrl": "https://www.instagram.com/intromie.studio?igsh=cXU2dmo3aTBxZW5z&utm_source=qr",
+
+  "audioButtons": {
+    "sfx":   { "x": 85.5, "y": 69, "w": 8.5, "h": 5.0 },
+    "music": { "x": 85.5, "y": 74.5, "w": 8.5, "h": 5.0 }
+  }
+}
+
+
+
+

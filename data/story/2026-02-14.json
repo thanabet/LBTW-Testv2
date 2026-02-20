@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "date": "2026-02-14",
+  "events": [
+    {
+      "time": "06:30",
+      "state": {
+        "profileCardSrc": "assets/cards/profile_card.png",
+        "scheduleCardSrc": "assets/cards/schedule_card.png",
+
+        "cloudProfile": "overcast",
+
+        "emotion": "normal",
+        "portraitAnim": {
+          "frames": ["normal_1", "normal_2"],
+          "durationsMs": [6000, 90],
+          "loop": true
+        },
+        "statusIconAnim": {
+          "frames": ["book_1", "book_2", "book_3"],
+          "durationsMs": [8000, 200, 200],
+          "loop": true
+        },
+        "statusIcon": "book",
+        "status": "STATUS : WAKE UP",
+        "mood": "MOOD : SLEEPY",
+        "dialogue": {
+          "th": "เช้านี้อากาศดี…",
+          "en": "Nice morning..."
+        },
+        "inRoom": ["army", "fai"]
+      }
+    },
+    {
+      "time": "15:34",
+      "state": {
+        "profileCardSrc": "assets/cards/profile_card.png",
+        "scheduleCardSrc": "assets/cards/schedule_card.png",
+
+        "cloudProfile": "overcast",
+
+        "emotion": "normal",
+        "portraitAnim": {
+          "frames": ["normal_1", "normal_2"],
+          "durationsMs": [6000, 90],
+          "loop": true
+        },
+        "statusIconAnim": {
+          "frames": ["book_1", "book_2", "book_3"],
+          "durationsMs": [8000, 200, 200],
+          "loop": true
+        },
+        "statusIcon": "book",
+        "status": "STATUS : READING",
+        "mood": "MOOD : FOCUSED",
+        "dialogue": {
+          "th": "พรุ่งนี้ต้องอ่านให้จบ…",
+          "en": "I must finish it..."
+        },
+        "inRoom": ["army", "fai", "poon"]
+      }
+    }
+  ]
+}
+
+

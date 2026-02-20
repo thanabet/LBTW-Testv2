@@ -1,0 +1,106 @@
+{
+  "profiles": {
+    "none": { 
+      "enabled": false 
+    },
+
+    "few": {
+      "enabled": true,
+      "layers": [
+        {
+          "name": "far",
+          "speedPxPerSec": 4,
+          "scale": 0.5,
+          "baseAlpha": 0.55,
+          "overlapPx": 6,
+
+          "bandRectPct": { "x": 0, "y": 28, "w": 100, "h": 70 },
+          "yAlign": "center",
+          "yOffsetPct": 4,
+
+          "keyframes": [
+            { "time": "06:00", "src": "./assets/clouds/far_few_0600.png" },
+            { "time": "12:00", "src": "./assets/clouds/far_few_0600.png" },
+            { "time": "18:00", "src": "./assets/clouds/far_few_0600.png" },
+            { "time": "22:00", "src": "./assets/clouds/far_few_0600.png" }
+          ]
+        },
+        {
+          "name": "near",
+          "speedPxPerSec": 10,
+          "scale": 1,
+          "baseAlpha": 0.90,
+          "overlapPx": 6,
+
+          "bandRectPct": { "x": 0, "y": 0, "w": 100, "h": 45 },
+          "yAlign": "top",
+          "yOffsetPct": -2,
+
+          "keyframes": [
+            { "time": "06:00", "src": "./assets/clouds/near_few_0600.png" },
+            { "time": "12:00", "src": "./assets/clouds/near_few_0600.png" },
+            { "time": "18:00", "src": "./assets/clouds/near_few_0600.png" },
+            { "time": "22:00", "src": "./assets/clouds/near_few_0600.png" }
+          ]
+        }
+      ]
+    },
+
+    "overcast": {
+      "enabled": true,
+      "layers": [
+        {
+          "name": "far",
+          "speedPxPerSec": 6,
+          "scale": 0.5,
+          "baseAlpha": 0.70,
+          "overlapPx": 6,
+
+          "bandRectPct": { "x": 0, "y": 28, "w": 100, "h": 70 },
+          "yAlign": "center",
+          "yOffsetPct": 5,
+
+          "keyframes": [
+            { "time": "06:00", "src": "./assets/clouds/far_overcast_0600.png" },
+            { "time": "12:00", "src": "./assets/clouds/far_overcast_0600.png" },
+            { "time": "18:00", "src": "./assets/clouds/far_overcast_0600.png" },
+            { "time": "22:00", "src": "./assets/clouds/far_overcast_0600.png" }
+          ]
+        },
+        {
+          "name": "near",
+          "speedPxPerSec": 14,
+          "scale": 1,
+          "baseAlpha": 0.95,
+          "overlapPx": 6,
+
+          "bandRectPct": { "x": 0, "y": 0, "w": 100, "h": 45 },
+          "yAlign": "top",
+          "yOffsetPct": -1,
+
+          "keyframes": [
+            { "time": "06:00", "src": "./assets/clouds/near_overcast_0600.png" },
+            { "time": "12:00", "src": "./assets/clouds/near_overcast_0600.png" },
+            { "time": "18:00", "src": "./assets/clouds/near_overcast_0600.png" },
+            { "time": "22:00", "src": "./assets/clouds/near_overcast_0600.png" }
+          ]
+        }
+      ]
+    }
+  },
+
+  "defaultProfile": "none"
+}
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,34 @@
+{
+  "sfxBasePath": "assets/audio/sfx/",
+  "musicBasePath": "assets/audio/music/",
+
+  "defaults": {
+    "sfxVolume": 1.0,
+    "musicVolume": 0.4,
+    "musicFadeSec": 1.2
+  },
+
+  "autoMusic": {
+    "enabled": true,
+    "slots": [
+      { "start": "06:00", "key": "lofi_morning" },
+      { "start": "10:00", "key": "lofi_day" },
+      { "start": "17:00", "key": "lofi_evening" },
+      { "start": "21:00", "key": "lofi_night" }
+    ]
+  },
+
+  "sfx": {
+    "rain_loop": "rain_loop_soft.mp3",
+    "thunder": "thunder_hit_01.mp3"
+  },
+
+  "music": {
+    "lofi_morning": "lofi_morning.m4a",
+    "lofi_day": "lofi_day.m4a",
+    "lofi_evening": "lofi_evening.m4a",
+    "lofi_night": "lofi_night.m4a"
+  }
+}
+
+

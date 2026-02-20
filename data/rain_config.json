@@ -1,0 +1,17 @@
+{
+  "frames": [
+    "./assets/rain/rain_1.png",
+    "./assets/rain/rain_2.png",
+    "./assets/rain/rain_3.png"
+    
+  ],
+  "durationsMs": [120, 120, 120],
+  "fadeSec": 3.0,
+  "lightning": {
+    "enabled": true,
+    "minIntervalSec": 10,
+    "maxIntervalSec": 35
+  }
+}
+
+

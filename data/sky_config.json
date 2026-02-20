@@ -1,0 +1,17 @@
+{
+  "mode": "keyframes",
+  "keyframes": [
+{ "time": "04:00", "src": "./assets/sky/sky_0400.png" },
+    { "time": "05:00", "src": "./assets/sky/sky_0500.png" },
+    { "time": "06:00", "src": "./assets/sky/sky_0600.png" },
+    { "time": "07:00", "src": "./assets/sky/sky_0700.png" },
+    { "time": "08:00", "src": "./assets/sky/sky_0800.png" },
+    { "time": "12:00", "src": "./assets/sky/sky_1200.png" },
+    { "time": "15:00", "src": "./assets/sky/sky_1500.png" },
+    { "time": "16:00", "src": "./assets/sky/sky_1600.png" },
+    { "time": "17:00", "src": "./assets/sky/sky_1700.png" },
+    { "time": "19:00", "src": "./assets/sky/sky_1900.png" },
+    { "time": "20:00", "src": "./assets/sky/sky_2000.png" },
+    { "time": "00:00", "src": "./assets/sky/sky_0000.png" }
+  ]
+}
