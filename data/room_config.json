@@ -2,7 +2,7 @@
   "basePath": "assets/scene/room/",
   "filePattern": "{key}_{light}.png",
   "fadeSec": 3.0,
-  "lightFadeSec": 0.5,
+  "lightFadeSec": 0,
   "slots": [
     { "start": "05:30", "key": "night" },
 { "start": "06:30", "key": "dawn" },
@@ -12,4 +12,5 @@
     { "start": "18:30", "key": "evening" },
     { "start": "20:00", "key": "night" }
   ]
+
 }
