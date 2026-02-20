@@ -7,7 +7,7 @@
       "state": {
         "profileCardSrc": "assets/cards/profile_card.png",
         "scheduleCardSrc": "assets/cards/schedule_card.png",
-        "cloudProfile": "none",
+        "cloudProfile": "overcast",
         "emotion": "normal",
         "portraitAnim": {
           "frames": ["normal_1", "normal_2"],
@@ -119,7 +119,7 @@
       "state": {
         "profileCardSrc": "assets/cards/profile_card.png",
         "scheduleCardSrc": "assets/cards/schedule_card.png",
-        "cloudProfile": "overcast",
+        "cloudProfile": "none",
         "emotion": "normal",
         "portraitAnim": {
           "frames": ["normal_1", "normal_2"],
