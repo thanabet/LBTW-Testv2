@@ -3,7 +3,7 @@
   "date": "2026-02-14",
   "events": [
     {
-      "time": "05:40",
+      "time": "04:28",
       "state": {
         "profileCardSrc": "assets/cards/profile_card.png",
         "scheduleCardSrc": "assets/cards/schedule_card.png",
@@ -27,7 +27,7 @@
           "en": "Quiet dawn..."
         },
         "inRoom": ["army"],
-        "roomLight": "off"
+        "roomLight": "on"
       }
     },
     {
