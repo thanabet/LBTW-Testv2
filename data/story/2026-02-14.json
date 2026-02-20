@@ -7,7 +7,7 @@
       "state": {
         "profileCardSrc": "assets/cards/profile_card.png",
         "scheduleCardSrc": "assets/cards/schedule_card.png",
-        "cloudProfile": "overcast",
+        "cloudProfile": "few",
         "emotion": "normal",
         "portraitAnim": {
           "frames": ["normal_1", "normal_2"],
@@ -31,11 +31,11 @@
       }
     },
     {
-      "time": "08:00",
+      "time": "04:30",
       "state": {
         "profileCardSrc": "assets/cards/profile_card.png",
         "scheduleCardSrc": "assets/cards/schedule_card.png",
-        "cloudProfile": "few",
+        "cloudProfile": "overcast",
         "emotion": "normal",
         "portraitAnim": {
           "frames": ["normal_1", "normal_2"],
@@ -143,4 +143,5 @@
       }
     }
   ]
+
 }
