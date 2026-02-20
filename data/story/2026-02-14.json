@@ -27,7 +27,7 @@
           "en": "Quiet dawn..."
         },
         "inRoom": ["army"],
-        "roomLight": "on"
+        "roomLight": "off"
       }
     },
     {
@@ -55,7 +55,7 @@
           "en": "Morning."
         },
         "inRoom": ["army", "fai"],
-        "roomLight": "off"
+        "roomLight": "on"
       }
     },
     {
@@ -145,6 +145,7 @@
   ]
 
 }
+
 
 
 
