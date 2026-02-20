@@ -5,7 +5,7 @@
   "lightFadeSec": 0.5,
   "slots": [
     { "start": "05:00", "key": "night" },
-{ "start": "05:15", "key": "dawn" },
+{ "start": "05:20", "key": "dawn" },
     { "start": "08:00", "key": "day" },
 { "start": "16:30", "key": "day" },
     { "start": "17:30", "key": "sunset" },
@@ -14,3 +14,4 @@
   ]
 
 }
+
