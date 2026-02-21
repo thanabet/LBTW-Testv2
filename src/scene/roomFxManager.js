@@ -1,5 +1,6 @@
 // src/scene/roomFxManager.js
 // SAFE MODE: Missing PNGs will NOT crash boot.
+// + RANDOM LAYERS: time-window random play (e.g. birds) independent from fx1..fx5.
 // - Preload textures with Promise.allSettled
 // - Any missing frames => clip becomes "unavailable" => layer hides silently
 
@@ -23,12 +24,14 @@ class SpriteAnimator {
     this._frameIndex = 0;
     this._accMs = 0;
     this._playing = false;
+    this._textures = [];
   }
 
   setTextures(textures){
     const arr = Array.isArray(textures) ? textures.filter(Boolean) : [];
     this._frameIndex = 0;
     this._accMs = 0;
+    this._textures = arr;
 
     // If no textures, keep sprite invisible
     if(arr.length === 0){
@@ -40,7 +43,6 @@ class SpriteAnimator {
 
     this.sprite.visible = true;
     this.sprite.texture = arr[0];
-    this._textures = arr;
   }
 
   play(){
@@ -79,7 +81,7 @@ class SpriteAnimator {
         if(this.clip.loop){
           this._frameIndex = 0;
         } else {
-          // play once end
+          // play once end -> freeze last frame, caller may hide immediately
           this._frameIndex = this._textures.length - 1;
           this._playing = false;
           break;
@@ -89,6 +91,29 @@ class SpriteAnimator {
       this.sprite.texture = this._textures[this._frameIndex];
     }
   }
+
+  isFinishedPlayOnce(){
+    if(!this.clip) return false;
+    if(this.clip.loop) return false;
+    return this._playing === false; // becomes false at end of playOnce
+  }
+}
+
+// ---------- Random layer runtime ----------
+function _parseHHMM(s){
+  const m = String(s || "").trim().match(/^(\d{1,2}):(\d{2})$/);
+  if(!m) return null;
+  const hh = Math.max(0, Math.min(23, Number(m[1])));
+  const mm = Math.max(0, Math.min(59, Number(m[2])));
+  return hh * 60 + mm;
+}
+
+function _randBetween(min, max){
+  const a = Number(min);
+  const b = Number(max);
+  if(!isFinite(a) || !isFinite(b)) return 0;
+  if(b <= a) return a;
+  return a + Math.random() * (b - a);
 }
 
 export class RoomFxManager {
@@ -103,6 +128,9 @@ export class RoomFxManager {
     this._basePath = "assets/scene/roomfx/";
     this._clipsByName = new Map();      // clipName -> SpriteClip
     this._texturesByUrl = new Map();    // url -> texture (only if loaded OK)
+
+    // NEW: random layers (independent from fx1..fx5)
+    this.randomLayers = []; // array of { name, container, sprite, animator, cfg, nextTriggerMs, active, visibleWhilePlaying }
   }
 
   async load(cfg){
@@ -115,9 +143,10 @@ export class RoomFxManager {
       ? cfg.layers
       : this._layerOrder.map(name => ({ name }));
 
-    // rebuild layer containers/sprites
+    // rebuild base layers (fx1..fx5)
     this.container.removeChildren();
     this.layers = {};
+    this.randomLayers = [];
 
     for(const ld of layerDefs){
       const name = ld?.name;
@@ -173,11 +202,9 @@ export class RoomFxManager {
         }
       }catch(e){
         // swallow: missing file should not crash
-        // console.warn("[RoomFx] Failed to load", u, e);
       }
     });
 
-    // Use allSettled to guarantee completion
     await Promise.allSettled(tasks);
 
     // Resolve clip textures list now (only keep successfully loaded frames)
@@ -186,6 +213,49 @@ export class RoomFxManager {
         .map(u => this._texturesByUrl.get(u))
         .filter(Boolean);
     }
+
+    // NEW: build random layers after base layers, still inside roomFxContainer (below rain)
+    const randomCfg = Array.isArray(cfg.randomLayers) ? cfg.randomLayers : [];
+
+    for(const rc of randomCfg){
+      const name = String(rc?.name || "").trim();
+      const clipName = String(rc?.clip || "").trim();
+      if(!name || !clipName) continue;
+
+      const layerC = new PIXI.Container();
+      this.container.addChild(layerC);
+
+      const spr = new PIXI.Sprite();
+      spr.visible = false;
+      layerC.addChild(spr);
+
+      layerC.visible = false;
+
+      const animator = new SpriteAnimator(spr);
+
+      const startMin = _parseHHMM(rc?.activeBetween?.start ?? "06:00");
+      const endMin = _parseHHMM(rc?.activeBetween?.end ?? "19:00");
+
+      const minSec = Number(rc?.intervalSec?.min ?? 60);
+      const maxSec = Number(rc?.intervalSec?.max ?? 300);
+
+      this.randomLayers.push({
+        name,
+        container: layerC,
+        sprite: spr,
+        animator,
+        cfg: {
+          clip: clipName,
+          startMin: (startMin == null ? 360 : startMin),
+          endMin: (endMin == null ? 1140 : endMin),
+          minSec: isFinite(minSec) ? minSec : 60,
+          maxSec: isFinite(maxSec) ? maxSec : 300,
+          skipWhenRain: rc?.skipWhenRain !== undefined ? !!rc.skipWhenRain : true
+        },
+        nextTriggerMs: null,
+        active: false
+      });
+    }
   }
 
   resizeToRect(sceneRectPx){
@@ -193,6 +263,9 @@ export class RoomFxManager {
 
     for(const layer of Object.values(this.layers)){
       this._cover(layer.sprite);
+    }
+    for(const rl of this.randomLayers){
+      this._cover(rl.sprite);
     }
   }
 
@@ -253,15 +326,15 @@ export class RoomFxManager {
     }
   }
 
-  update(dtSec){
+  // ✅ NEW signature: update(now, dtSec, storyState)
+  update(now, dtSec, storyState){
+    // update base layers (fx1..fx5)
     for(const layer of Object.values(this.layers)){
       if(!layer.container.visible) continue;
 
-      // apply pending request
       if(layer.requestedClipName && layer.requestedClipName !== layer.currentClipName){
         this._applyLayerRequestNow(layer);
       } else if(layer.requestedClipName && layer.requestedClipName === layer.currentClipName){
-        // ensure play state matches
         if(layer.requestedPlay && !layer.animator.isPlaying()){
           layer.animator.play();
         }
@@ -271,6 +344,88 @@ export class RoomFxManager {
       }
 
       layer.animator.update(dtSec);
+    }
+
+    // update random layers (independent)
+    if(this.randomLayers.length){
+      const rainOn = this._resolveRainEnabled(storyState);
+
+      for(const rl of this.randomLayers){
+        this._updateRandomLayer(rl, now, dtSec, rainOn);
+      }
+    }
+  }
+
+  _updateRandomLayer(rl, now, dtSec, rainOn){
+    const tMs = now.getTime();
+    const mins = now.getHours() * 60 + now.getMinutes();
+
+    const withinWindow = (mins >= rl.cfg.startMin) && (mins < rl.cfg.endMin);
+    const shouldBlock = rl.cfg.skipWhenRain && rainOn;
+
+    // If outside window or blocked by rain -> stop + hide + clear schedule
+    if(!withinWindow || shouldBlock){
+      if(rl.container.visible || rl.animator.isPlaying() || rl.animator.clip){
+        rl.animator.stop();
+        rl.container.visible = false;
+        rl.sprite.visible = false;
+      }
+      rl.nextTriggerMs = null;
+      rl.active = false;
+      return;
+    }
+
+    // entering window: schedule first trigger if none
+    if(!rl.active){
+      rl.active = true;
+      rl.nextTriggerMs = tMs + Math.round(_randBetween(rl.cfg.minSec, rl.cfg.maxSec) * 1000);
+    }
+
+    // if currently playing, update and hide when finished
+    if(rl.container.visible){
+      rl.animator.update(dtSec);
+
+      if(rl.animator.isFinishedPlayOnce()){
+        // finish -> hide immediately (requirement #2)
+        rl.container.visible = false;
+        rl.sprite.visible = false;
+        rl.animator.stop();
+
+        // schedule next
+        rl.nextTriggerMs = tMs + Math.round(_randBetween(rl.cfg.minSec, rl.cfg.maxSec) * 1000);
+      }
+      return;
+    }
+
+    // not visible -> wait for trigger
+    if(rl.nextTriggerMs == null){
+      rl.nextTriggerMs = tMs + Math.round(_randBetween(rl.cfg.minSec, rl.cfg.maxSec) * 1000);
+      return;
+    }
+
+    if(tMs >= rl.nextTriggerMs){
+      // trigger play once
+      const clip = this._clipsByName.get(rl.cfg.clip);
+
+      if(!clip || !clip._textures || clip._textures.length === 0){
+        // missing asset: fail silently, reschedule
+        rl.container.visible = false;
+        rl.sprite.visible = false;
+        rl.animator.stop();
+        rl.nextTriggerMs = tMs + Math.round(_randBetween(rl.cfg.minSec, rl.cfg.maxSec) * 1000);
+        return;
+      }
+
+      rl.animator.clip = clip;
+      rl.animator.setTextures(clip._textures);
+      this._cover(rl.sprite);
+
+      rl.container.visible = true;
+      rl.sprite.visible = true;
+      rl.animator.play();
+
+      // next trigger scheduled after finish (so no overlap)
+      rl.nextTriggerMs = null;
     }
   }
 
@@ -301,8 +456,25 @@ export class RoomFxManager {
       layer.animator.stop();
     }
 
-    // Ensure visible if textures exist
     layer.container.visible = true;
+  }
+
+  _resolveRainEnabled(storyState){
+    const profile =
+      storyState?.cloudProfile ??
+      storyState?.state?.cloudProfile ??
+      "none";
+
+    const override =
+      (storyState?.rain !== undefined) ? storyState.rain :
+      (storyState?.state?.rain !== undefined) ? storyState.state.rain :
+      undefined;
+
+    if(override === true) return true;
+    if(override === false) return false;
+
+    const p = String(profile).trim().toLowerCase();
+    return (p === "overcast");
   }
 
   _resolveUrl(frame){

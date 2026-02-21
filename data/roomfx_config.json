@@ -13,6 +13,11 @@
       "durationsMs": [2400, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100],
       "loop": true
     },
+    "bird_perch_once": {
+      "frames": ["bird_1.png", "bird_2.png", "bird_3.png", "bird_4.png", "bird_5.png", "bird_6.png", "bird_7.png", "bird_8.png", "bird_9.png", "bird_10.png", "bird_11.png"],
+      "durationsMs": [2400, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100],
+      "loop": false
+    },
     "laundry_wind": {
       "frames": ["laundry_1.png", "laundry_2.png", "laundry_3.png"],
       "durationsMs": [220, 220, 220],
@@ -33,5 +38,28 @@
       "durationsMs": [900, 120],
       "loop": true
     }
-  }
+  },
+  "randomLayers": [
+    {
+      "name": "bird_rand_1",
+      "clip": "bird_perch_once",
+      "activeBetween": { "start": "06:00", "end": "19:00" },
+      "intervalSec": { "min": 60, "max": 300 },
+      "skipWhenRain": true
+    },
+    {
+      "name": "bird_rand_2",
+      "clip": "bird_perch_once",
+      "activeBetween": { "start": "06:00", "end": "19:00" },
+      "intervalSec": { "min": 120, "max": 300 },
+      "skipWhenRain": true
+    },
+    {
+      "name": "bird_rand_3",
+      "clip": "bird_perch_once",
+      "activeBetween": { "start": "06:00", "end": "19:00" },
+      "intervalSec": { "min": 300, "max": 300 },
+      "skipWhenRain": true
+    }
+  ]
 }

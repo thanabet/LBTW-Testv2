@@ -368,14 +368,16 @@ export class SceneEngine {
       this.room.update(now, dtSec, storyState);
     }
 
-    // room fx (NEW) – must reflect story instantly on refresh too
+    // room fx – must reflect story instantly on refresh too
     if(this._roomFxReady && this.roomFx){
       if(!this._hasSetInitialRoomFx){
         this.setInitialRoomFxState(storyState);
       } else {
         this.roomFx.applyStoryState(storyState, { immediate: false });
       }
-      this.roomFx.update(dtSec);
+
+      // ✅ CHANGE: pass now + storyState so random layers can work
+      this.roomFx.update(now, dtSec, storyState);
     }
 
     // rain + lightning auto/override (top-most)
