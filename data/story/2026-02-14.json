@@ -139,7 +139,7 @@
           "en": "Late night..."
         },
         "inRoom": ["army"],
-        "roomLight": "on"
+        "roomLight": "off"
       }
     }
   ]
