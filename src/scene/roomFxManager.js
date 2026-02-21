@@ -1,4 +1,7 @@
 // src/scene/roomFxManager.js
+// SAFE MODE: Missing PNGs will NOT crash boot.
+// - Preload textures with Promise.allSettled
+// - Any missing frames => clip becomes "unavailable" => layer hides silently
 
 class SpriteClip {
   constructor({ name, frames, durationsMs, loop = true }){
@@ -6,6 +9,9 @@ class SpriteClip {
     this.frames = frames;              // array of texture URLs
     this.durationsMs = durationsMs;    // array of ms per frame
     this.loop = loop;
+
+    // runtime: resolved textures for available frames only
+    this._textures = [];
   }
 }
 
@@ -17,20 +23,28 @@ class SpriteAnimator {
     this._frameIndex = 0;
     this._accMs = 0;
     this._playing = false;
-
-    this._textures = []; // PIXI.Textures for current clip
   }
 
   setTextures(textures){
-    this._textures = textures || [];
+    const arr = Array.isArray(textures) ? textures.filter(Boolean) : [];
     this._frameIndex = 0;
     this._accMs = 0;
-    if(this._textures[0]){
-      this.sprite.texture = this._textures[0];
+
+    // If no textures, keep sprite invisible
+    if(arr.length === 0){
+      this.sprite.visible = false;
+      this.sprite.texture = PIXI.Texture.EMPTY;
+      this._playing = false;
+      return;
     }
+
+    this.sprite.visible = true;
+    this.sprite.texture = arr[0];
+    this._textures = arr;
   }
 
   play(){
+    if(!this._textures || this._textures.length === 0) return;
     this._playing = true;
   }
 
@@ -38,7 +52,8 @@ class SpriteAnimator {
     this._playing = false;
     this._frameIndex = 0;
     this._accMs = 0;
-    if(this._textures[0]){
+
+    if(this._textures && this._textures[0]){
       this.sprite.texture = this._textures[0];
     }
   }
@@ -49,7 +64,7 @@ class SpriteAnimator {
 
   update(dtSec){
     if(!this._playing || !this.clip) return;
-    if(!this._textures.length) return;
+    if(!this._textures || this._textures.length === 0) return;
 
     this._accMs += dtSec * 1000;
 
@@ -82,41 +97,39 @@ export class RoomFxManager {
 
     this._rect = { x:0, y:0, w:100, h:100 };
 
-    // 5 layers
     this.layers = {};
     this._layerOrder = ["fx1","fx2","fx3","fx4","fx5"];
 
-    // config
     this._basePath = "assets/scene/roomfx/";
     this._clipsByName = new Map();      // clipName -> SpriteClip
-    this._texturesByUrl = new Map();    // url -> texture
-
-    // per layer runtime
-    // { container, sprite, animator, currentClipName, visible }
+    this._texturesByUrl = new Map();    // url -> texture (only if loaded OK)
   }
 
   async load(cfg){
+    // SAFE: cfg may be missing or invalid — do not throw
+    cfg = cfg && typeof cfg === "object" ? cfg : {};
+
     this._basePath = cfg.basePath ?? this._basePath;
 
-    const layerNames = cfg.layers && Array.isArray(cfg.layers) && cfg.layers.length
+    const layerDefs = (Array.isArray(cfg.layers) && cfg.layers.length)
       ? cfg.layers
       : this._layerOrder.map(name => ({ name }));
 
-    // build layer containers/sprites
+    // rebuild layer containers/sprites
     this.container.removeChildren();
     this.layers = {};
 
-    for(const ln of layerNames){
-      const name = ln.name;
+    for(const ld of layerDefs){
+      const name = ld?.name;
       if(!name) continue;
 
       const layerC = new PIXI.Container();
       this.container.addChild(layerC);
 
       const spr = new PIXI.Sprite();
+      spr.visible = false;
       layerC.addChild(spr);
 
-      // default hidden until story says otherwise
       layerC.visible = false;
 
       const animator = new SpriteAnimator(spr);
@@ -132,34 +145,47 @@ export class RoomFxManager {
       };
     }
 
-    // load clips
-    // cfg.clips = { clipName: { frames:[...], durationsMs:[...], loop:true } }
-    const clips = cfg.clips || {};
+    // build clips
+    this._clipsByName.clear();
+    this._texturesByUrl.clear();
+
+    const clips = (cfg.clips && typeof cfg.clips === "object") ? cfg.clips : {};
 
     const urlsToLoad = new Set();
 
     for(const [clipName, def] of Object.entries(clips)){
-      const frames = (def.frames || []).map(f => this._resolveUrl(f));
-      const durationsMs = def.durationsMs || [];
-      const loop = (def.loop !== undefined) ? !!def.loop : true;
+      const frames = Array.isArray(def?.frames) ? def.frames.map(f => this._resolveUrl(f)) : [];
+      const durationsMs = Array.isArray(def?.durationsMs) ? def.durationsMs : [];
+      const loop = (def?.loop !== undefined) ? !!def.loop : true;
 
-      const clip = new SpriteClip({
-        name: clipName,
-        frames,
-        durationsMs,
-        loop
-      });
-
+      const clip = new SpriteClip({ name: clipName, frames, durationsMs, loop });
       this._clipsByName.set(clipName, clip);
 
       frames.forEach(u => urlsToLoad.add(u));
     }
 
-    // preload textures
-    await Promise.all([...urlsToLoad].map(async (u)=>{
-      const tex = await PIXI.Assets.load(u);
-      this._texturesByUrl.set(u, tex);
-    }));
+    // SAFE preload: do not reject if any URL missing
+    const tasks = [...urlsToLoad].map(async (u)=>{
+      try{
+        const tex = await PIXI.Assets.load(u);
+        if(tex){
+          this._texturesByUrl.set(u, tex);
+        }
+      }catch(e){
+        // swallow: missing file should not crash
+        // console.warn("[RoomFx] Failed to load", u, e);
+      }
+    });
+
+    // Use allSettled to guarantee completion
+    await Promise.allSettled(tasks);
+
+    // Resolve clip textures list now (only keep successfully loaded frames)
+    for(const clip of this._clipsByName.values()){
+      clip._textures = clip.frames
+        .map(u => this._texturesByUrl.get(u))
+        .filter(Boolean);
+    }
   }
 
   resizeToRect(sceneRectPx){
@@ -170,22 +196,15 @@ export class RoomFxManager {
     }
   }
 
-  // storyState.roomFx or storyState.state.roomFx
-  // supported shapes:
-  // 1) { fx1:{clip:"bird_perch", play:true}, fx2:null, ... }
-  // 2) { fx1:"bird_perch", fx2:"laundry_loop" }  (string shorthand = play true)
-  // 3) ["bird_perch","laundry_loop"]  (auto fill fx1..fxN)
   applyStoryState(storyState, { immediate = false } = {}){
     const roomFx =
       storyState?.roomFx ??
       storyState?.state?.roomFx ??
       null;
 
-    // normalize into map layerName -> {clip, play}
     const desired = {};
 
     if(Array.isArray(roomFx)){
-      // array shorthand
       for(let i=0;i<this._layerOrder.length;i++){
         const layerName = this._layerOrder[i];
         const clipName = roomFx[i];
@@ -203,20 +222,16 @@ export class RoomFxManager {
           desired[layerName] = { clip: v, play: true };
           continue;
         }
-        // object form
         const clip = v.clip ? String(v.clip) : null;
         const play = (v.play !== undefined) ? !!v.play : true;
         desired[layerName] = clip ? { clip, play } : null;
       }
-    } else {
-      // no roomFx in state => all off
     }
 
     for(const [layerName, layer] of Object.entries(this.layers)){
       const want = desired[layerName];
 
       if(!want){
-        // hide layer
         layer.container.visible = false;
         layer.requestedClipName = null;
         layer.requestedPlay = false;
@@ -228,7 +243,6 @@ export class RoomFxManager {
         continue;
       }
 
-      // show layer
       layer.container.visible = true;
       layer.requestedClipName = want.clip;
       layer.requestedPlay = want.play;
@@ -237,24 +251,17 @@ export class RoomFxManager {
         this._applyLayerRequestNow(layer);
       }
     }
-
-    if(!immediate){
-      // defer actual clip swap to update() so it's stable per frame
-      // (we still keep visibility updated immediately)
-    }
   }
 
   update(dtSec){
     for(const layer of Object.values(this.layers)){
-      if(!layer.container.visible){
-        continue;
-      }
+      if(!layer.container.visible) continue;
 
-      // apply pending request if needed
+      // apply pending request
       if(layer.requestedClipName && layer.requestedClipName !== layer.currentClipName){
         this._applyLayerRequestNow(layer);
       } else if(layer.requestedClipName && layer.requestedClipName === layer.currentClipName){
-        // just ensure play/stop matches
+        // ensure play state matches
         if(layer.requestedPlay && !layer.animator.isPlaying()){
           layer.animator.play();
         }
@@ -271,22 +278,21 @@ export class RoomFxManager {
     const clipName = layer.requestedClipName;
     const clip = this._clipsByName.get(clipName);
 
-    if(!clip){
-      // unknown clip => hide to avoid weird empty sprite
+    // Unknown clip or no textures loaded => hide silently
+    if(!clip || !clip._textures || clip._textures.length === 0){
       layer.container.visible = false;
       layer.currentClipName = null;
       layer.requestedClipName = null;
       layer.requestedPlay = false;
       layer.animator.stop();
+      layer.sprite.visible = false;
       return;
     }
 
-    const textures = clip.frames.map(u => this._texturesByUrl.get(u)).filter(Boolean);
     layer.animator.clip = clip;
-    layer.animator.setTextures(textures);
+    layer.animator.setTextures(clip._textures);
     layer.currentClipName = clipName;
 
-    // ensure cover after new texture
     this._cover(layer.sprite);
 
     if(layer.requestedPlay){
@@ -294,11 +300,14 @@ export class RoomFxManager {
     } else {
       layer.animator.stop();
     }
+
+    // Ensure visible if textures exist
+    layer.container.visible = true;
   }
 
   _resolveUrl(frame){
-    // if already absolute or contains "/" treat as direct url
-    const f = String(frame);
+    const f = String(frame || "");
+    if(!f) return "";
     if(f.startsWith("http://") || f.startsWith("https://") || f.startsWith("./") || f.startsWith("/")){
       return f;
     }
