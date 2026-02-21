@@ -1,8 +1,8 @@
 // src/scene/roomManager.js
-// Continuous keyframe blend like Sky:
-// - Uses room_config.json "slots" as keyframes
-// - Always blends between current slot and next slot based on time within interval
-// - Supports roomLight on/off with 0.5s crossfade (requires 2 layers × 2 sprites = 4 sprites total)
+// Continuous keyframe blend like Sky BUT without see-through:
+// - Base image alpha stays 1
+// - Overlay image alpha = t
+// Supports roomLight on/off with 0.5s light crossfade (two layers)
 
 export class RoomManager {
   constructor(container){
@@ -14,18 +14,19 @@ export class RoomManager {
     this.layer0 = new PIXI.Container();
     this.layer1 = new PIXI.Container();
     this.container.addChild(this.layer1); // behind
-    this.container.addChild(this.layer0); // in front
+    this.container.addChild(this.layer0); // front
 
-    // Each layer uses 2 sprites for time keyframe blend
-    this.l0A = new PIXI.Sprite();
-    this.l0B = new PIXI.Sprite();
-    this.layer0.addChild(this.l0A, this.l0B);
+    // Each layer uses 2 sprites:
+    // base = current slot (alpha 1)
+    // over = next slot (alpha t)
+    this.l0Base = new PIXI.Sprite();
+    this.l0Over = new PIXI.Sprite();
+    this.layer0.addChild(this.l0Base, this.l0Over);
 
-    this.l1A = new PIXI.Sprite();
-    this.l1B = new PIXI.Sprite();
-    this.layer1.addChild(this.l1A, this.l1B);
+    this.l1Base = new PIXI.Sprite();
+    this.l1Over = new PIXI.Sprite();
+    this.layer1.addChild(this.l1Base, this.l1Over);
 
-    // default alphas
     this.layer0.alpha = 1;
     this.layer1.alpha = 0;
 
@@ -33,7 +34,7 @@ export class RoomManager {
     this._basePath = "assets/scene/room/";
     this._filePattern = "{key}_{light}.png";
 
-    // used only for light toggle fade
+    // light toggle fade only
     this._lightFadeSec = 0.5;
 
     this._rect = { x:0, y:0, w:100, h:100 };
@@ -79,12 +80,10 @@ export class RoomManager {
 
   resizeToRect(sceneRectPx){
     this._rect = sceneRectPx;
-
-    // cover all sprites
-    this._cover(this.l0A);
-    this._cover(this.l0B);
-    this._cover(this.l1A);
-    this._cover(this.l1B);
+    this._cover(this.l0Base);
+    this._cover(this.l0Over);
+    this._cover(this.l1Base);
+    this._cover(this.l1Over);
   }
 
   update(now, dtSec, storyState){
@@ -95,7 +94,7 @@ export class RoomManager {
         ? "on"
         : "off";
 
-    // Handle light toggle fade (0.5s) without breaking continuous time blend
+    // Start light fade if needed
     if(desiredLight !== this._currentLight){
       this._prevLight = this._currentLight;
       this._currentLight = desiredLight;
@@ -104,32 +103,31 @@ export class RoomManager {
       this._lightFadeT = 0;
       this._lightFadeDur = this._lightFadeSec;
 
-      // At the start of fade:
       // layer1 shows previous light, layer0 shows current light
       this.layer1.alpha = 1;
       this.layer0.alpha = 0;
     }
 
-    // Always compute continuous time blend for both layers
+    // Continuous time blend (keyA = current slot, keyB = next slot, t=0..1)
     const { keyA, keyB, t } = this._computeBlend(now);
 
-    // Update layer0 textures (current light)
-    this._setSprite(this.l0A, keyA, this._currentLight);
-    this._setSprite(this.l0B, keyB, this._currentLight);
-    this.l0A.alpha = 1 - t;
-    this.l0B.alpha = t;
+    // ---- Layer0 (current light): base alpha 1, overlay alpha t
+    this._setSprite(this.l0Base, keyA, this._currentLight);
+    this._setSprite(this.l0Over, keyB, this._currentLight);
+    this.l0Base.alpha = 1;
+    this.l0Over.alpha = t;
 
-    // Update layer1 textures (prev light) only if fading
+    // ---- Layer1 (prev light) only if fading
     if(this._lightFading){
-      this._setSprite(this.l1A, keyA, this._prevLight);
-      this._setSprite(this.l1B, keyB, this._prevLight);
-      this.l1A.alpha = 1 - t;
-      this.l1B.alpha = t;
+      this._setSprite(this.l1Base, keyA, this._prevLight);
+      this._setSprite(this.l1Over, keyB, this._prevLight);
+      this.l1Base.alpha = 1;
+      this.l1Over.alpha = t;
 
+      // crossfade between lights
       this._lightFadeT += dtSec;
       const u = Math.min(1, this._lightFadeT / Math.max(0.01, this._lightFadeDur));
 
-      // crossfade between lights
       this.layer0.alpha = u;
       this.layer1.alpha = 1 - u;
 
@@ -139,47 +137,39 @@ export class RoomManager {
         this.layer1.alpha = 0;
       }
     } else {
-      // not fading: keep only layer0 visible
       this.layer0.alpha = 1;
       this.layer1.alpha = 0;
     }
   }
 
-  // --- continuous blend between current slot and next slot ---
   _computeBlend(now){
     const tMin = now.getHours() * 60 + now.getMinutes() + (now.getSeconds() / 60);
 
-    // pick current slot = last slot whose startMin <= tMin
+    // current slot = last slot start <= now
     let idxA = 0;
     for(let i=0;i<this._slots.length;i++){
       if(tMin >= this._slots[i].startMin) idxA = i;
       else break;
     }
-
     const idxB = (idxA + 1) % this._slots.length;
 
     const a = this._slots[idxA];
     const b = this._slots[idxB];
 
-    // interval length (wrap midnight)
-    let startA = a.startMin;
-    let startB = b.startMin;
-
+    // span (wrap midnight)
     let span;
     if(idxB > idxA){
-      span = startB - startA;
+      span = b.startMin - a.startMin;
     } else {
-      // wrap: e.g. 22:00 -> 05:30
-      span = (1440 - startA) + startB;
+      span = (1440 - a.startMin) + b.startMin;
     }
     span = Math.max(1, span);
 
-    // elapsed since startA (wrap if needed)
-    let elapsed = tMin - startA;
+    // elapsed since a.start (wrap)
+    let elapsed = tMin - a.startMin;
     if(elapsed < 0) elapsed += 1440;
 
     const t = Math.max(0, Math.min(1, elapsed / span));
-
     return { keyA: a.key, keyB: b.key, t };
   }
 
