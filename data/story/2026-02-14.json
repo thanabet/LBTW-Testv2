@@ -35,7 +35,7 @@
       "state": {
         "profileCardSrc": "assets/cards/profile_card.png",
         "scheduleCardSrc": "assets/cards/schedule_card.png",
-        "cloudProfile": "overcast",
+        "cloudProfile": "few",
         "emotion": "normal",
         "portraitAnim": {
           "frames": ["normal_1", "normal_2"],
@@ -55,7 +55,7 @@
           "en": "Morning."
         },
         "inRoom": ["army", "fai"],
-        "roomLight": "on"
+        "roomLight": "off"
       }
     },
     {
