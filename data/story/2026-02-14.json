@@ -111,11 +111,11 @@
           "en": "Lights on."
         },
         "inRoom": ["army"],
-        "roomLight": "on"
+        "roomLight": "off"
       }
     },
     {
-      "time": "22:30",
+      "time": "22:39",
       "state": {
         "profileCardSrc": "assets/cards/profile_card.png",
         "scheduleCardSrc": "assets/cards/schedule_card.png",
@@ -139,7 +139,7 @@
           "en": "Late night..."
         },
         "inRoom": ["army"],
-        "roomLight": "off"
+        "roomLight": "on"
       }
     }
   ]
