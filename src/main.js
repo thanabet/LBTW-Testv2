@@ -1,190 +1,161 @@
-import { HudEngine } from "./hud/hudEngine.js";
+// src/main.js
 import { SceneEngine } from "./scene/sceneEngine.js";
-import { loadStory } from "./story/storyEngine.js";
+import { HudEngine } from "./hud/hudEngine.js";
+import { StoryEngine } from "./story/storyEngine.js";
 import { AudioManager } from "./audio/audioManager.js";
 
-/* =========================
-   Small helpers
-========================= */
-async function loadJSON(url) {
+const TEMPLATE_W = 1595;
+const TEMPLATE_H = 3457;
+const RATIO = TEMPLATE_H / TEMPLATE_W;
+
+const STAGE_Y_OFFSET_PX = 20;
+
+async function loadJSON(url){
   const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+  if(!res.ok) throw new Error(`Failed to load ${url}`);
   return await res.json();
 }
 
-/** Debug overlay on screen (no need to edit index.html) */
-function ensureDebugOverlay() {
-  let el = document.getElementById("debugOverlay");
-  if (el) return el;
-
-  el = document.createElement("div");
-  el.id = "debugOverlay";
-  el.style.position = "fixed";
-  el.style.left = "12px";
-  el.style.right = "12px";
-  el.style.top = "12px";
-  el.style.zIndex = "999999";
-  el.style.padding = "10px 12px";
-  el.style.borderRadius = "10px";
-  el.style.fontFamily = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
-  el.style.fontSize = "12px";
-  el.style.lineHeight = "1.35";
-  el.style.whiteSpace = "pre-wrap";
-  el.style.background = "rgba(140,0,0,0.85)";
-  el.style.color = "#fff";
-  el.style.display = "none";
-  document.body.appendChild(el);
-  return el;
+function setVisualViewportHeight(){
+  const vv = window.visualViewport;
+  const h = vv ? vv.height : window.innerHeight;
+  document.documentElement.style.setProperty("--vvh", `${h * 0.01}px`);
 }
 
-function showDebug(msg) {
-  const el = ensureDebugOverlay();
-  el.textContent = msg;
-  el.style.display = "block";
+function setStageByRatio(){
+  const vw = window.innerWidth;
+  const vh = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+
+  const stageH = vw * RATIO;
+  document.documentElement.style.setProperty("--stage-h", `${stageH}px`);
+
+  let y = (vh - stageH) / 2;
+  y += STAGE_Y_OFFSET_PX;
+
+  y = Math.min(0, y);
+  y = Math.max(vh - stageH, y);
+
+  document.documentElement.style.setProperty("--stage-y", `${y}px`);
 }
 
-function hideDebug() {
-  const el = document.getElementById("debugOverlay");
-  if (el) el.style.display = "none";
-}
+async function boot(){
+  setVisualViewportHeight();
+  setStageByRatio();
 
-/** Always keep RAF loop alive even if something throws */
-function safeCall(label, fn) {
-  try {
-    fn();
-  } catch (err) {
-    const msg =
-      `❌ Runtime error in ${label}\n\n` +
-      (err?.stack ? err.stack : String(err));
-    showDebug(msg);
-    // don't rethrow — keep loop running
-  }
-}
+  const sceneLayout = await loadJSON("./data/scene_layout.json");
+  const hudLayout = await loadJSON("./data/hud_layout.json");
 
-/* =========================
-   Main
-========================= */
-let hud, scene, story, audio;
-let lastTs = 0;
+  const scene = new SceneEngine({
+    hostEl: document.getElementById("scene-host"),
+    sceneLayout
+  });
 
-function getNowMinutes() {
-  const d = new Date();
-  return d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60;
-}
+  const hud = new HudEngine({
+    overlayEl: document.getElementById("overlay"),
+    hudLayout
+  });
 
-function computeStateAtMinute(storyObj, minute) {
-  // storyEngine.js export: loadStory() gives { date, events, ... }
-  // each event: { time:"HH:MM", state:{...} }
-  const events = Array.isArray(storyObj?.events) ? storyObj.events : [];
-  if (events.length === 0) return {};
+  const story = new StoryEngine({
+    storyUrl: "./data/story/2026-02-14.json"
+  });
 
-  // convert "HH:MM" -> minutes
-  const timeToMin = (t) => {
-    if (typeof t !== "string") return 0;
-    const [hh, mm] = t.split(":");
-    const H = Number(hh);
-    const M = Number(mm);
-    if (!Number.isFinite(H) || !Number.isFinite(M)) return 0;
-    return H * 60 + M;
+  await story.init();
+
+  hud.setState(story.getCurrentState());
+  hud.enableDialogueToggle(() => hud.toggleDialogueLang());
+
+  const reflow = () => {
+    setVisualViewportHeight();
+    setStageByRatio();
+    scene.resize();
+    hud.resize();
   };
 
-  let chosen = events[0];
-  for (const ev of events) {
-    if (timeToMin(ev.time) <= minute) chosen = ev;
+  if(window.visualViewport){
+    window.visualViewport.addEventListener("resize", reflow);
+    window.visualViewport.addEventListener("scroll", reflow);
   }
-  return chosen?.state || {};
-}
+  window.addEventListener("resize", reflow);
 
-function resizeAll() {
-  safeCall("resizeAll()", () => {
-    const stage = document.getElementById("stage");
-    if (!stage) return;
+  // --- SKY ---
+  const skyCfg = await loadJSON("./data/sky_config.json");
+  const urls = [...new Set(skyCfg.keyframes.map(k => k.src))];
 
-    const rect = stage.getBoundingClientRect();
-    const w = Math.max(1, Math.floor(rect.width));
-    const h = Math.max(1, Math.floor(rect.height));
-
-    if (scene) scene.resize(w, h);
-    if (hud) hud.resize(w, h);
-  });
-}
-
-function tick(ts) {
-  // ALWAYS schedule next frame first (so even if something breaks, we keep looping)
-  requestAnimationFrame(tick);
-
-  const dt = lastTs ? (ts - lastTs) / 1000 : 0;
-  lastTs = ts;
-
-  const nowMin = getNowMinutes();
-
-  // state
-  let state = {};
-  safeCall("computeStateAtMinute()", () => {
-    state = computeStateAtMinute(story, nowMin) || {};
+  await scene.initSky({
+    urls,
+    keyframes: skyCfg.keyframes,
+    mode: "keyframes"
   });
 
-  // update
-  safeCall("scene.update()", () => {
-    if (scene) scene.update(state, dt);
+  // --- CLOUDS ---
+  const cloudCfg = await loadJSON("./data/cloud_config.json");
+  await scene.initClouds(cloudCfg);
+
+  // --- ROOM ---
+  const roomCfg = await loadJSON("./data/room_config.json");
+  await scene.initRoom(roomCfg);
+
+  // --- ROOM FX (NEW) ---
+  const roomFxCfg = await loadJSON("./data/roomfx_config.json");
+  await scene.initRoomFx(roomFxCfg);
+
+  // --- RAIN ---
+  const rainCfg = await loadJSON("./data/rain_config.json");
+  await scene.initRain(rainCfg);
+
+  // --- AUDIO ---
+  const audioCfg = await loadJSON("./data/audio_config.json");
+  const audio = new AudioManager(audioCfg);
+  hud.setAudioManager(audio);
+
+  // thunder sync with lightning flashes (from RainManager)
+  window.addEventListener("lbtw:lightning", () => {
+    audio.playSfx("thunder", { volume: 1.0 });
   });
 
-  safeCall("hud.update()", () => {
-    if (hud) hud.update(state, dt);
-  });
+  // first layout
+  scene.resize();
+  hud.resize();
 
-  safeCall("audio.applyStoryState()", () => {
-    if (audio) audio.applyStoryState(state);
-  });
-}
+  // set initial clouds instantly (no fade-in on refresh)
+  const now0 = new Date();
+  const initialState = story.computeStateAt(now0);
 
-async function boot() {
-  try {
-    hideDebug();
+  const initialProfile =
+    initialState?.cloudProfile ??
+    initialState?.state?.cloudProfile ??
+    "none";
+  scene.setInitialCloudProfile(initialProfile);
 
-    // Engines
-    hud = new HudEngine({
-      stageEl: document.getElementById("stage"),
-      templateEl: document.getElementById("template"),
-    });
+  // set initial roomFX instantly (must reflect current story immediately)
+  scene.setInitialRoomFxState(initialState);
 
-    scene = new SceneEngine({
-      stageEl: document.getElementById("stage"),
-      sceneEl: document.getElementById("scene"),
-    });
+  let lastTs = performance.now();
 
-    audio = new AudioManager();
+  function tick(){
+    const now = new Date();
+    const ts = performance.now();
+    const dtSec = Math.min(0.05, (ts - lastTs) / 1000);
+    lastTs = ts;
 
-    // Load configs (NO-STORE to avoid stale cache)
-    const [hudLayout, storyObj] = await Promise.all([
-      loadJSON("./data/hud_layout.json"),
-      loadStory("./data/2026-02-14.json"),
-    ]);
+    const nextState = story.computeStateAt(now);
 
-    story = storyObj;
+    scene.update(now, dtSec, nextState);
 
-    // Init (order matters)
-    await scene.init();
-    await hud.init(hudLayout);
-    await audio.init();
+    hud.setState(nextState);
+    hud.setCalendar(now);
+    hud.setClockHands(now);
 
-    resizeAll();
-    window.addEventListener("resize", resizeAll);
+    // ✅ Audio follows state (starts silent; user must tap buttons)
+    audio.applyStoryState(now, nextState);
 
-    // Start loop
     requestAnimationFrame(tick);
-  } catch (err) {
-    const msg =
-      `❌ BOOT ERROR\n\n` +
-      (err?.stack ? err.stack : String(err)) +
-      `\n\n` +
-      `เช็คบ่อยสุด:\n` +
-      `- path ไฟล์ ./data/*.json หรือรูป/เสียง 404\n` +
-      `- json พัง (comma/quote)\n` +
-      `- import path ไม่ตรงโฟลเดอร์`;
-    showDebug(msg);
-    console.error(err);
   }
+
+  tick();
 }
 
-boot();
+boot().catch(err => {
+  console.error(err);
+  document.body.style.background = "#111";
+});

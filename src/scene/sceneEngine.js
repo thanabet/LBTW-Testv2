@@ -2,7 +2,7 @@ import { SkyManager } from "./skyManager.js";
 import { CloudManager } from "./cloudManager.js";
 import { RainManager } from "./rainManager.js";
 import { RoomManager } from "./roomManager.js";
-import { FxManager } from "./fxManager.js";
+import { RoomFxManager } from "./roomFxManager.js";
 
 const CLOUD_PROFILE_FADE_SEC = 60.0;
 
@@ -31,22 +31,23 @@ export class SceneEngine {
 
     this._hasSetInitialCloud = false;
 
-    // rain layer (top-most)
+    // rain layer (top)
     this.rainContainer = null;
     this.rain = null;
     this._rainReady = false;
 
-    // room layer (below fx/rain, above clouds)
+    // room layer
     this.roomContainer = null;
     this.room = null;
     this._roomReady = false;
 
-    // ✅ FX 5 layers (between room and rain)
-    this.fxContainer = null;
-    this.fx = null;
-    this._fxReady = false;
+    // room fx layer (NEW) - above room, below rain
+    this.roomFxContainer = null;
+    this.roomFx = null;
+    this._roomFxReady = false;
+    this._hasSetInitialRoomFx = false;
 
-    // remember lightning state to avoid spamming setters
+    // ✅ remember current lightning state to avoid spamming setters
     this._lastLightningEnabled = null;
 
     this.skyContainer = null;
@@ -81,17 +82,14 @@ export class SceneEngine {
     this.skyContainer = new PIXI.Container();
     this.cloudContainer = new PIXI.Container();
     this.roomContainer = new PIXI.Container();
-
-    // ✅ NEW: FX container (5 layers) between room and rain
-    this.fxContainer = new PIXI.Container();
-
+    this.roomFxContainer = new PIXI.Container(); // NEW
     this.rainContainer = new PIXI.Container();
 
-    // order: sky -> clouds -> room -> FX -> rain (rain/lightning always top)
+    // order: sky -> clouds -> room -> roomFx -> rain (rain/lightning always top)
     this.app.stage.addChild(this.skyContainer);
     this.app.stage.addChild(this.cloudContainer);
     this.app.stage.addChild(this.roomContainer);
-    this.app.stage.addChild(this.fxContainer);
+    this.app.stage.addChild(this.roomFxContainer); // NEW: above room
     this.app.stage.addChild(this.rainContainer);
 
     // 2 alpha layers for clouds
@@ -144,33 +142,6 @@ export class SceneEngine {
     }
   }
 
-  async initRoom(roomConfig){
-    await this._ensurePixi();
-
-    this.room = new RoomManager(this.roomContainer);
-    await this.room.load(roomConfig);
-
-    this._roomReady = true;
-
-    if(this.sceneRectPx){
-      this.room.resizeToRect(this.sceneRectPx);
-    }
-  }
-
-  // ✅ NEW
-  async initFx(fxConfig){
-    await this._ensurePixi();
-
-    this.fx = new FxManager(this.fxContainer, ["fx1","fx2","fx3","fx4","fx5"]);
-    await this.fx.loadConfig(fxConfig);
-
-    this._fxReady = true;
-
-    if(this.sceneRectPx){
-      this.fx.resizeToRect(this.sceneRectPx);
-    }
-  }
-
   async initRain(rainConfig){
     await this._ensurePixi();
 
@@ -185,6 +156,39 @@ export class SceneEngine {
     if(this.sceneRectPx){
       this.rain.resizeToRect(this.sceneRectPx);
     }
+  }
+
+  async initRoom(roomConfig){
+    await this._ensurePixi();
+
+    this.room = new RoomManager(this.roomContainer);
+    await this.room.load(roomConfig);
+
+    this._roomReady = true;
+
+    if(this.sceneRectPx){
+      this.room.resizeToRect(this.sceneRectPx);
+    }
+  }
+
+  async initRoomFx(roomFxConfig){
+    await this._ensurePixi();
+
+    this.roomFx = new RoomFxManager(this.roomFxContainer);
+    await this.roomFx.load(roomFxConfig);
+
+    this._roomFxReady = true;
+    this._hasSetInitialRoomFx = false;
+
+    if(this.sceneRectPx){
+      this.roomFx.resizeToRect(this.sceneRectPx);
+    }
+  }
+
+  setInitialRoomFxState(storyState){
+    if(!this._roomFxReady || !this.roomFx) return;
+    this.roomFx.applyStoryState(storyState, { immediate: true });
+    this._hasSetInitialRoomFx = true;
   }
 
   _normalizeProfile(p){
@@ -282,12 +286,13 @@ export class SceneEngine {
 
     if(this.room) this.room.resizeToRect(this.sceneRectPx);
 
-    // ✅ NEW
-    if(this.fx) this.fx.resizeToRect(this.sceneRectPx);
+    if(this.roomFx) this.roomFx.resizeToRect(this.sceneRectPx);
 
     if(this.rain) this.rain.resizeToRect(this.sceneRectPx);
   }
 
+  // rain override:
+  // storyState.rain or storyState.state.rain (true/false/undefined)
   _resolveRainEnabled(profile, storyState){
     const override =
       (storyState?.rain !== undefined) ? storyState.rain :
@@ -301,6 +306,7 @@ export class SceneEngine {
     return (p === "overcast");
   }
 
+  // lightning override:
   _resolveLightningEnabled(storyState){
     const override =
       (storyState?.lightning !== undefined) ? storyState.lightning :
@@ -310,7 +316,7 @@ export class SceneEngine {
     if(override === true) return true;
     if(override === false) return false;
 
-    return true;
+    return true; // default ON
   }
 
   update(now, dtSec, storyState){
@@ -357,29 +363,34 @@ export class SceneEngine {
       }
     }
 
-    // rain + lightning auto/override
+    // room (time-slot + roomLight on/off)
+    if(this._roomReady && this.room){
+      this.room.update(now, dtSec, storyState);
+    }
+
+    // room fx (NEW) – must reflect story instantly on refresh too
+    if(this._roomFxReady && this.roomFx){
+      if(!this._hasSetInitialRoomFx){
+        this.setInitialRoomFxState(storyState);
+      } else {
+        this.roomFx.applyStoryState(storyState, { immediate: false });
+      }
+      this.roomFx.update(dtSec);
+    }
+
+    // rain + lightning auto/override (top-most)
     if(this._rainReady && this.rain){
       const rainOn = this._resolveRainEnabled(profile, storyState);
       this.rain.setEnabled(rainOn);
 
       const lightningOn = this._resolveLightningEnabled(storyState);
+
       if(this._lastLightningEnabled !== lightningOn){
         this.rain.setLightningEnabled(lightningOn);
         this._lastLightningEnabled = lightningOn;
       }
 
       this.rain.update(dtSec);
-    }
-
-    // room (continuous blend + light fade)
-    if(this._roomReady && this.room){
-      this.room.update(now, dtSec, storyState);
-    }
-
-    // ✅ NEW: FX (story-driven)
-    if(this._fxReady && this.fx){
-      this.fx.applyStoryState(storyState);
-      this.fx.update(dtSec);
     }
   }
 }

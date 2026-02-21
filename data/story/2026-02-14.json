@@ -2,7 +2,6 @@
   "version": 1,
   "date": "2026-02-14",
   "events": [
-
     {
       "time": "04:28",
       "state": {
@@ -29,86 +28,103 @@
         },
         "inRoom": ["army"],
         "roomLight": "off",
-        "fxLayers": {
-          "fx1": { "clip": null, "visible": false },
-          "fx2": { "clip": null, "visible": false },
-          "fx3": { "clip": null, "visible": false },
-          "fx4": { "clip": null, "visible": false },
-          "fx5": { "clip": null, "visible": false }
+        "roomFx": {
+          "fx1": { "clip": "bird_perch", "play": true },
+          "fx2": null,
+          "fx3": null,
+          "fx4": null,
+          "fx5": null
         }
       }
     },
-
     {
-      "time": "08:30",
+      "time": "05:19",
       "state": {
+        "profileCardSrc": "assets/cards/profile_card.png",
+        "scheduleCardSrc": "assets/cards/schedule_card.png",
         "cloudProfile": "few",
+        "emotion": "normal",
+        "portraitAnim": {
+          "frames": ["normal_1", "normal_2"],
+          "durationsMs": [6000, 90],
+          "loop": true
+        },
+        "statusIconAnim": {
+          "frames": ["book_1", "book_2", "book_3"],
+          "durationsMs": [8000, 200, 200],
+          "loop": true
+        },
+        "statusIcon": "book",
         "status": "STATUS : MORNING",
-        "mood": "MOOD : ACTIVE",
+        "mood": "MOOD : FRESH",
         "dialogue": {
-          "th": "เช้าแล้ว เริ่มขยับตัว",
-          "en": "Morning energy."
+          "th": "เช้าแล้ว เริ่มวันใหม่",
+          "en": "Morning."
         },
         "inRoom": ["army", "fai"],
         "roomLight": "off",
-        "fxLayers": {
-          "fx1": { "clip": "laundry_flap", "visible": true },
-          "fx2": { "clip": "ac_fan", "visible": true },
-          "fx3": { "clip": null, "visible": false },
-          "fx4": { "clip": null, "visible": false },
-          "fx5": { "clip": null, "visible": false }
+        "roomFx": {
+          "fx1": null,
+          "fx2": { "clip": "laundry_wind", "play": true },
+          "fx3": null,
+          "fx4": null,
+          "fx5": null
         }
       }
     },
-
-    {
-      "time": "13:10",
-      "state": {
-        "cloudProfile": "none",
-        "status": "STATUS : AFTERNOON",
-        "mood": "MOOD : FOCUSED",
-        "dialogue": {
-          "th": "แดดบ่ายแรง แต่ยังตั้งใจทำงาน",
-          "en": "Afternoon focus."
-        },
-        "inRoom": ["army"],
-        "roomLight": "off",
-        "fxLayers": {
-          "fx1": { "clip": "ac_fan", "visible": true },
-          "fx2": { "clip": null, "visible": false },
-          "fx3": { "clip": null, "visible": false },
-          "fx4": { "clip": null, "visible": false },
-          "fx5": { "clip": null, "visible": false }
-        }
-      }
-    },
-
     {
       "time": "17:30",
       "state": {
+        "profileCardSrc": "assets/cards/profile_card.png",
+        "scheduleCardSrc": "assets/cards/schedule_card.png",
         "cloudProfile": "few",
+        "emotion": "normal",
+        "portraitAnim": {
+          "frames": ["normal_1", "normal_2"],
+          "durationsMs": [6000, 90],
+          "loop": true
+        },
+        "statusIconAnim": {
+          "frames": ["book_1", "book_2", "book_3"],
+          "durationsMs": [8000, 200, 200],
+          "loop": true
+        },
+        "statusIcon": "book",
         "status": "STATUS : SUNSET",
         "mood": "MOOD : CALM",
         "dialogue": {
           "th": "พระอาทิตย์กำลังตก...",
           "en": "Sunset..."
         },
-        "inRoom": ["army", "poon"],
+        "inRoom": ["army", "fai", "poon"],
         "roomLight": "off",
-        "fxLayers": {
-          "fx1": { "clip": "laundry_flap", "visible": true },
-          "fx2": { "clip": "bird_perch", "visible": true },
-          "fx3": { "clip": null, "visible": false },
-          "fx4": { "clip": null, "visible": false },
-          "fx5": { "clip": null, "visible": false }
+        "roomFx": {
+          "fx1": null,
+          "fx2": null,
+          "fx3": { "clip": "ac_fan", "play": true },
+          "fx4": null,
+          "fx5": null
         }
       }
     },
-
     {
       "time": "19:00",
       "state": {
+        "profileCardSrc": "assets/cards/profile_card.png",
+        "scheduleCardSrc": "assets/cards/schedule_card.png",
         "cloudProfile": "overcast",
+        "emotion": "normal",
+        "portraitAnim": {
+          "frames": ["normal_1", "normal_2"],
+          "durationsMs": [6000, 90],
+          "loop": true
+        },
+        "statusIconAnim": {
+          "frames": ["book_1", "book_2", "book_3"],
+          "durationsMs": [8000, 200, 200],
+          "loop": true
+        },
+        "statusIcon": "book",
         "status": "STATUS : EVENING",
         "mood": "MOOD : RELAXED",
         "dialogue": {
@@ -116,21 +132,34 @@
           "en": "Lights on."
         },
         "inRoom": ["army"],
-        "roomLight": "on",
-        "fxLayers": {
-          "fx1": { "clip": null, "visible": false },
-          "fx2": { "clip": "knock_once", "visible": true },
-          "fx3": { "clip": null, "visible": false },
-          "fx4": { "clip": null, "visible": false },
-          "fx5": { "clip": null, "visible": false }
+        "roomLight": "off",
+        "roomFx": {
+          "fx1": null,
+          "fx2": null,
+          "fx3": null,
+          "fx4": { "clip": "knock_once", "play": true },
+          "fx5": null
         }
       }
     },
-
     {
       "time": "22:41",
       "state": {
+        "profileCardSrc": "assets/cards/profile_card.png",
+        "scheduleCardSrc": "assets/cards/schedule_card.png",
         "cloudProfile": "none",
+        "emotion": "normal",
+        "portraitAnim": {
+          "frames": ["normal_1", "normal_2"],
+          "durationsMs": [6000, 90],
+          "loop": true
+        },
+        "statusIconAnim": {
+          "frames": ["book_1", "book_2", "book_3"],
+          "durationsMs": [8000, 200, 200],
+          "loop": true
+        },
+        "statusIcon": "book",
         "status": "STATUS : NIGHT",
         "mood": "MOOD : SLEEPY",
         "dialogue": {
@@ -139,15 +168,14 @@
         },
         "inRoom": ["army"],
         "roomLight": "on",
-        "fxLayers": {
-          "fx1": { "clip": null, "visible": false },
-          "fx2": { "clip": "bird_perch", "visible": true },
-          "fx3": { "clip": null, "visible": false },
-          "fx4": { "clip": null, "visible": false },
-          "fx5": { "clip": null, "visible": false }
+        "roomFx": {
+          "fx1": null,
+          "fx2": null,
+          "fx3": null,
+          "fx4": null,
+          "fx5": { "clip": "neon_blink", "play": true }
         }
       }
     }
-
   ]
 }

@@ -1,0 +1,37 @@
+{
+  "basePath": "assets/scene/roomfx/",
+  "layers": [
+    { "name": "fx1" },
+    { "name": "fx2" },
+    { "name": "fx3" },
+    { "name": "fx4" },
+    { "name": "fx5" }
+  ],
+  "clips": {
+    "bird_perch": {
+      "frames": ["bird_1.png", "bird_2.png", "bird_3.png"],
+      "durationsMs": [2400, 140, 140],
+      "loop": true
+    },
+    "laundry_wind": {
+      "frames": ["laundry_1.png", "laundry_2.png", "laundry_3.png"],
+      "durationsMs": [220, 220, 220],
+      "loop": true
+    },
+    "ac_fan": {
+      "frames": ["fan_1.png", "fan_2.png", "fan_3.png"],
+      "durationsMs": [140, 140, 140],
+      "loop": true
+    },
+    "knock_once": {
+      "frames": ["knock_1.png", "knock_2.png", "knock_3.png", "knock_4.png"],
+      "durationsMs": [60, 60, 60, 60],
+      "loop": false
+    },
+    "neon_blink": {
+      "frames": ["neon_1.png", "neon_2.png"],
+      "durationsMs": [900, 120],
+      "loop": true
+    }
+  }
+}
