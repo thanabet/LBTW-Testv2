@@ -173,9 +173,10 @@
           "fx2": null,
           "fx3": null,
           "fx4": null,
-          "fx5": { "clip": "neon_blink", "play": true }
+          "fx5": null
         }
       }
     }
   ]
+
 }
