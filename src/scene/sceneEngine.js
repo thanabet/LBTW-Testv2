@@ -2,6 +2,7 @@ import { SkyManager } from "./skyManager.js";
 import { CloudManager } from "./cloudManager.js";
 import { RainManager } from "./rainManager.js";
 import { RoomManager } from "./roomManager.js";
+import { FxManager } from "./fxManager.js";
 
 const CLOUD_PROFILE_FADE_SEC = 60.0;
 
@@ -30,17 +31,22 @@ export class SceneEngine {
 
     this._hasSetInitialCloud = false;
 
-    // rain layer (above clouds)
+    // rain layer (top-most)
     this.rainContainer = null;
     this.rain = null;
     this._rainReady = false;
 
-    // room layer (below rain, above clouds)
+    // room layer (below fx/rain, above clouds)
     this.roomContainer = null;
     this.room = null;
     this._roomReady = false;
 
-    // ✅ remember current lightning state to avoid spamming setters
+    // ✅ FX 5 layers (between room and rain)
+    this.fxContainer = null;
+    this.fx = null;
+    this._fxReady = false;
+
+    // remember lightning state to avoid spamming setters
     this._lastLightningEnabled = null;
 
     this.skyContainer = null;
@@ -75,12 +81,17 @@ export class SceneEngine {
     this.skyContainer = new PIXI.Container();
     this.cloudContainer = new PIXI.Container();
     this.roomContainer = new PIXI.Container();
+
+    // ✅ NEW: FX container (5 layers) between room and rain
+    this.fxContainer = new PIXI.Container();
+
     this.rainContainer = new PIXI.Container();
 
-    // order: sky -> clouds -> room -> rain (rain/lightning always top)
+    // order: sky -> clouds -> room -> FX -> rain (rain/lightning always top)
     this.app.stage.addChild(this.skyContainer);
     this.app.stage.addChild(this.cloudContainer);
     this.app.stage.addChild(this.roomContainer);
+    this.app.stage.addChild(this.fxContainer);
     this.app.stage.addChild(this.rainContainer);
 
     // 2 alpha layers for clouds
@@ -133,6 +144,33 @@ export class SceneEngine {
     }
   }
 
+  async initRoom(roomConfig){
+    await this._ensurePixi();
+
+    this.room = new RoomManager(this.roomContainer);
+    await this.room.load(roomConfig);
+
+    this._roomReady = true;
+
+    if(this.sceneRectPx){
+      this.room.resizeToRect(this.sceneRectPx);
+    }
+  }
+
+  // ✅ NEW
+  async initFx(fxConfig){
+    await this._ensurePixi();
+
+    this.fx = new FxManager(this.fxContainer, ["fx1","fx2","fx3","fx4","fx5"]);
+    await this.fx.loadConfig(fxConfig);
+
+    this._fxReady = true;
+
+    if(this.sceneRectPx){
+      this.fx.resizeToRect(this.sceneRectPx);
+    }
+  }
+
   async initRain(rainConfig){
     await this._ensurePixi();
 
@@ -146,19 +184,6 @@ export class SceneEngine {
 
     if(this.sceneRectPx){
       this.rain.resizeToRect(this.sceneRectPx);
-    }
-  }
-
-  async initRoom(roomConfig){
-    await this._ensurePixi();
-
-    this.room = new RoomManager(this.roomContainer);
-    await this.room.load(roomConfig);
-
-    this._roomReady = true;
-
-    if(this.sceneRectPx){
-      this.room.resizeToRect(this.sceneRectPx);
     }
   }
 
@@ -257,11 +282,12 @@ export class SceneEngine {
 
     if(this.room) this.room.resizeToRect(this.sceneRectPx);
 
+    // ✅ NEW
+    if(this.fx) this.fx.resizeToRect(this.sceneRectPx);
+
     if(this.rain) this.rain.resizeToRect(this.sceneRectPx);
   }
 
-  // rain override:
-  // storyState.rain or storyState.state.rain (true/false/undefined)
   _resolveRainEnabled(profile, storyState){
     const override =
       (storyState?.rain !== undefined) ? storyState.rain :
@@ -275,9 +301,6 @@ export class SceneEngine {
     return (p === "overcast");
   }
 
-  // ✅ NEW: lightning override:
-  // storyState.lightning or storyState.state.lightning (true/false/undefined)
-  // default: ON (but only meaningful when rain is visible)
   _resolveLightningEnabled(storyState){
     const override =
       (storyState?.lightning !== undefined) ? storyState.lightning :
@@ -287,7 +310,7 @@ export class SceneEngine {
     if(override === true) return true;
     if(override === false) return false;
 
-    return true; // default ON
+    return true;
   }
 
   update(now, dtSec, storyState){
@@ -339,10 +362,7 @@ export class SceneEngine {
       const rainOn = this._resolveRainEnabled(profile, storyState);
       this.rain.setEnabled(rainOn);
 
-      // lightning can be overridden; if rain is off it doesn't matter but safe
       const lightningOn = this._resolveLightningEnabled(storyState);
-
-      // avoid calling setter every frame
       if(this._lastLightningEnabled !== lightningOn){
         this.rain.setLightningEnabled(lightningOn);
         this._lastLightningEnabled = lightningOn;
@@ -351,9 +371,15 @@ export class SceneEngine {
       this.rain.update(dtSec);
     }
 
-    // room (time-slot + roomLight on/off)
+    // room (continuous blend + light fade)
     if(this._roomReady && this.room){
       this.room.update(now, dtSec, storyState);
+    }
+
+    // ✅ NEW: FX (story-driven)
+    if(this._fxReady && this.fx){
+      this.fx.applyStoryState(storyState);
+      this.fx.update(dtSec);
     }
   }
 }
