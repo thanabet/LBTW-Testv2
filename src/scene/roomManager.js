@@ -1,60 +1,70 @@
 // src/scene/roomManager.js
-// Room system: time-slot + roomLight (on/off) using 2-sprite crossfade.
-// - Slots decide base key by time (dawn/day/sunset/evening/night)
-// - roomLight decides suffix (_off/_on)
-// - If time-slot changes -> crossfade
-// - If only light changes -> instant switch (NO fade)
+// Continuous keyframe blend like Sky:
+// - Uses room_config.json "slots" as keyframes
+// - Always blends between current slot and next slot based on time within interval
+// - Supports roomLight on/off with 0.5s crossfade (requires 2 layers × 2 sprites = 4 sprites total)
 
 export class RoomManager {
   constructor(container){
     this.container = container;
 
-    this.spriteA = new PIXI.Sprite();
-    this.spriteB = new PIXI.Sprite();
-    this.container.addChild(this.spriteA);
-    this.container.addChild(this.spriteB);
+    // Two layers for light crossfade:
+    // layer0 = current light
+    // layer1 = previous light during fade
+    this.layer0 = new PIXI.Container();
+    this.layer1 = new PIXI.Container();
+    this.container.addChild(this.layer1); // behind
+    this.container.addChild(this.layer0); // in front
 
-    this.spriteA.alpha = 0;
-    this.spriteB.alpha = 0;
+    // Each layer uses 2 sprites for time keyframe blend
+    this.l0A = new PIXI.Sprite();
+    this.l0B = new PIXI.Sprite();
+    this.layer0.addChild(this.l0A, this.l0B);
 
-    this._active = "A";
+    this.l1A = new PIXI.Sprite();
+    this.l1B = new PIXI.Sprite();
+    this.layer1.addChild(this.l1A, this.l1B);
 
-    this._slots = [];
+    // default alphas
+    this.layer0.alpha = 1;
+    this.layer1.alpha = 0;
+
+    this._slots = []; // [{key,startMin}]
     this._basePath = "assets/scene/room/";
     this._filePattern = "{key}_{light}.png";
 
-    this._fadeSec = 3.0;
-    this._lightFadeSec = 0.5; // ไม่ใช้แล้ว แต่เก็บไว้เผื่อ config เดิม
+    // used only for light toggle fade
+    this._lightFadeSec = 0.5;
 
-    this._rect = { x: 0, y: 0, w: 100, h: 100 };
+    this._rect = { x:0, y:0, w:100, h:100 };
     this._texByUrl = new Map();
 
-    this._currentSlotKey = null;
+    // light state
     this._currentLight = "off";
-
-    this._isFading = false;
-    this._fadeT = 0;
-    this._fadeDur = 1;
-    this._from = this.spriteA;
-    this._to = this.spriteB;
+    this._prevLight = "off";
+    this._lightFading = false;
+    this._lightFadeT = 0;
+    this._lightFadeDur = 0.5;
   }
 
   async load(roomConfig){
     this._basePath = roomConfig.basePath ?? this._basePath;
     this._filePattern = roomConfig.filePattern ?? this._filePattern;
 
-    this._fadeSec = Math.max(0.01, Number(roomConfig.fadeSec ?? this._fadeSec) || this._fadeSec);
-    this._lightFadeSec = Math.max(0.01, Number(roomConfig.lightFadeSec ?? this._lightFadeSec) || this._lightFadeSec);
+    this._lightFadeSec = Math.max(
+      0.01,
+      Number(roomConfig.lightFadeSec ?? this._lightFadeSec) || this._lightFadeSec
+    );
 
     this._slots = (roomConfig.slots || [])
       .map(s => ({
         key: s.key,
-        start: s.start,
         startMin: RoomManager._parseTimeToMinute(s.start)
       }))
       .filter(s => s.key && s.startMin !== null)
       .sort((a,b)=>a.startMin-b.startMin);
 
+    // preload all required textures (slots × {off,on})
     const urls = new Set();
     for(const s of this._slots){
       urls.add(this._buildUrl(s.key, "off"));
@@ -69,89 +79,115 @@ export class RoomManager {
 
   resizeToRect(sceneRectPx){
     this._rect = sceneRectPx;
-    this._cover(this.spriteA);
-    this._cover(this.spriteB);
+
+    // cover all sprites
+    this._cover(this.l0A);
+    this._cover(this.l0B);
+    this._cover(this.l1A);
+    this._cover(this.l1B);
   }
 
   update(now, dtSec, storyState){
     if(!this._slots.length) return;
 
-    const slotKey = this._getSlotKey(now);
-    const light = (storyState?.roomLight ?? storyState?.state?.roomLight ?? "off") === "on" ? "on" : "off";
+    const desiredLight =
+      (storyState?.roomLight ?? storyState?.state?.roomLight ?? "off") === "on"
+        ? "on"
+        : "off";
 
-    if(this._currentSlotKey === null){
-      this._currentSlotKey = slotKey;
-      this._currentLight = light;
+    // Handle light toggle fade (0.5s) without breaking continuous time blend
+    if(desiredLight !== this._currentLight){
+      this._prevLight = this._currentLight;
+      this._currentLight = desiredLight;
 
-      this._setSprite(this.spriteA, slotKey, light);
-      this.spriteA.alpha = 1;
-      this.spriteB.alpha = 0;
-      this._active = "A";
-      this._isFading = false;
-      return;
+      this._lightFading = true;
+      this._lightFadeT = 0;
+      this._lightFadeDur = this._lightFadeSec;
+
+      // At the start of fade:
+      // layer1 shows previous light, layer0 shows current light
+      this.layer1.alpha = 1;
+      this.layer0.alpha = 0;
     }
 
-    if(this._isFading){
-      this._fadeT += dtSec;
-      const t = Math.min(1, this._fadeT / this._fadeDur);
-      this._from.alpha = 1 - t;
-      this._to.alpha = t;
+    // Always compute continuous time blend for both layers
+    const { keyA, keyB, t } = this._computeBlend(now);
 
-      if(t >= 1){
-        this._from.alpha = 0;
-        this._to.alpha = 1;
-        this._active = (this._active === "A") ? "B" : "A";
-        this._isFading = false;
+    // Update layer0 textures (current light)
+    this._setSprite(this.l0A, keyA, this._currentLight);
+    this._setSprite(this.l0B, keyB, this._currentLight);
+    this.l0A.alpha = 1 - t;
+    this.l0B.alpha = t;
+
+    // Update layer1 textures (prev light) only if fading
+    if(this._lightFading){
+      this._setSprite(this.l1A, keyA, this._prevLight);
+      this._setSprite(this.l1B, keyB, this._prevLight);
+      this.l1A.alpha = 1 - t;
+      this.l1B.alpha = t;
+
+      this._lightFadeT += dtSec;
+      const u = Math.min(1, this._lightFadeT / Math.max(0.01, this._lightFadeDur));
+
+      // crossfade between lights
+      this.layer0.alpha = u;
+      this.layer1.alpha = 1 - u;
+
+      if(u >= 1){
+        this._lightFading = false;
+        this.layer0.alpha = 1;
+        this.layer1.alpha = 0;
       }
-      return;
-    }
-
-    const slotChanged = (slotKey !== this._currentSlotKey);
-    const lightChanged = (light !== this._currentLight);
-
-    if(!slotChanged && !lightChanged) return;
-
-    // ✅ ถ้าเปลี่ยนช่วงเวลา → crossfade เหมือนเดิม
-    if(slotChanged){
-      this._startFade(slotKey, light, this._fadeSec);
-      this._currentSlotKey = slotKey;
-      this._currentLight = light;
-      return;
-    }
-
-    // ✅ ถ้าเปลี่ยนแค่ไฟ → instant switch (ไม่มี fade)
-    if(lightChanged){
-      const activeSpr = (this._active === "A") ? this.spriteA : this.spriteB;
-
-      this._setSprite(activeSpr, slotKey, light);
-      activeSpr.alpha = 1;
-
-      this._currentLight = light;
-      return;
+    } else {
+      // not fading: keep only layer0 visible
+      this.layer0.alpha = 1;
+      this.layer1.alpha = 0;
     }
   }
 
-  _startFade(slotKey, light, fadeDur){
-    const fromSpr = (this._active === "A") ? this.spriteA : this.spriteB;
-    const toSpr   = (this._active === "A") ? this.spriteB : this.spriteA;
+  // --- continuous blend between current slot and next slot ---
+  _computeBlend(now){
+    const tMin = now.getHours() * 60 + now.getMinutes() + (now.getSeconds() / 60);
 
-    this._setSprite(toSpr, slotKey, light);
+    // pick current slot = last slot whose startMin <= tMin
+    let idxA = 0;
+    for(let i=0;i<this._slots.length;i++){
+      if(tMin >= this._slots[i].startMin) idxA = i;
+      else break;
+    }
 
-    this._from = fromSpr;
-    this._to = toSpr;
-    this._fadeT = 0;
-    this._fadeDur = Math.max(0.01, fadeDur || this._fadeSec);
+    const idxB = (idxA + 1) % this._slots.length;
 
-    fromSpr.alpha = 1;
-    toSpr.alpha = 0;
-    this._isFading = true;
+    const a = this._slots[idxA];
+    const b = this._slots[idxB];
+
+    // interval length (wrap midnight)
+    let startA = a.startMin;
+    let startB = b.startMin;
+
+    let span;
+    if(idxB > idxA){
+      span = startB - startA;
+    } else {
+      // wrap: e.g. 22:00 -> 05:30
+      span = (1440 - startA) + startB;
+    }
+    span = Math.max(1, span);
+
+    // elapsed since startA (wrap if needed)
+    let elapsed = tMin - startA;
+    if(elapsed < 0) elapsed += 1440;
+
+    const t = Math.max(0, Math.min(1, elapsed / span));
+
+    return { keyA: a.key, keyB: b.key, t };
   }
 
   _setSprite(sprite, slotKey, light){
     const url = this._buildUrl(slotKey, light);
     const tex = this._texByUrl.get(url);
     if(tex){
-      sprite.texture = tex;
+      if(sprite.texture !== tex) sprite.texture = tex;
       sprite.visible = true;
       this._cover(sprite);
     }else{
@@ -186,21 +222,11 @@ export class RoomManager {
     sprite.y = r.y + (r.h - h) / 2;
   }
 
-  _getSlotKey(now){
-    const tMin = now.getHours() * 60 + now.getMinutes();
-    let pick = this._slots[0];
-    for(const s of this._slots){
-      if(tMin >= s.startMin) pick = s;
-      else break;
-    }
-    return pick.key;
-  }
-
   static _parseTimeToMinute(str){
     const parts = String(str || "").split(":");
     if(parts.length < 1) return null;
     const hh = parseInt(parts[0], 10);
-    const mm = parseInt(parts[1] ?? "0", 10);
+    const mm = parseFloat(parts[1] ?? "0");
     if(Number.isNaN(hh) || Number.isNaN(mm)) return null;
     return hh * 60 + mm;
   }
