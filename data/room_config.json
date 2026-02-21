@@ -4,13 +4,13 @@
   "fadeSec": 3.0,
   "lightFadeSec": 0.5,
   "slots": [
-    { "start": "05:10", "key": "night" },
+    { "start": "00:00", "key": "dawn" },
 { "start": "05:30", "key": "dawn" },
     { "start": "08:00", "key": "day" },
 { "start": "16:30", "key": "day" },
     { "start": "17:30", "key": "sunset" },
     { "start": "18:30", "key": "evening" },
-    { "start": "20:00", "key": "night" }
+    { "start": "21:00", "key": "night" }
   ]
 
 }
