@@ -1,0 +1,44 @@
+{
+  "actors": [
+    {
+      "type": "cat",
+      "id": "balcony_cat",
+      "basePath": "assets/scene/actors/cat/",
+      "hitboxPct": { "x": 64, "y": 30, "w": 20, "h": 18 },
+
+      "activeBetween": { "start": "08:00", "end": "18:00" },
+      "sessionsPerDay": { "min": 2, "max": 3 },
+      "sessionDurationMin": 60,
+      "sessionDurationJitterMin": 10,
+      "skipWhenRain": true,
+
+      "rainExitMode": "react_then_exit",
+      "rainExitDelaySec": 0.8,
+      "rainPlayMeow": true,
+      "rainMeowSfxKey": "cat_meow",
+
+      "clips": {
+        "enter": {
+          "frames": ["enter_01.png", "enter_02.png", "enter_03.png"],
+          "durationsMs": [90, 90, 90],
+          "loop": false
+        },
+        "idle": {
+          "frames": ["idle_01.png", "idle_02.png", "idle_03.png"],
+          "durationsMs": [260, 260, 260],
+          "loop": true
+        },
+        "react": {
+          "frames": ["react_01.png", "react_02.png", "react_03.png", "react_04.png"],
+          "durationsMs": [120, 120, 120, 120],
+          "loop": false
+        },
+        "exit": {
+          "frames": ["exit_01.png", "exit_02.png", "exit_03.png"],
+          "durationsMs": [90, 90, 90],
+          "loop": false
+        }
+      }
+    }
+  ]
+}

@@ -20,7 +20,8 @@
 
   "sfx": {
     "rain_loop": "rain_loop_soft.mp3",
-    "thunder": "thunder_hit_01.mp3"
+    "thunder": "thunder_hit_01.mp3",
+    "cat_meow": "cat_meow_01.mp3"
   },
 
   "music": {
@@ -30,5 +31,3 @@
     "lofi_night": "lofi_night.m4a"
   }
 }
-
-

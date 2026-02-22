@@ -95,9 +95,13 @@ async function boot(){
   const roomCfg = await loadJSON("./data/room_config.json");
   await scene.initRoom(roomCfg);
 
-  // --- ROOM FX (NEW) ---
+  // --- ROOM FX ---
   const roomFxCfg = await loadJSON("./data/roomfx_config.json");
   await scene.initRoomFx(roomFxCfg);
+
+  // --- ACTORS (NEW) ---
+  const actorsCfg = await loadJSON("./data/actors_config.json");
+  await scene.initActors(actorsCfg);
 
   // --- RAIN ---
   const rainCfg = await loadJSON("./data/rain_config.json");
@@ -111,6 +115,15 @@ async function boot(){
   // thunder sync with lightning flashes (from RainManager)
   window.addEventListener("lbtw:lightning", () => {
     audio.playSfx("thunder", { volume: 1.0 });
+  });
+
+  // NEW: actor sfx (e.g., cat meow)
+  window.addEventListener("lbtw:actorSfx", (e) => {
+    const key = e?.detail?.key;
+    if(!key) return;
+
+    // If audio config doesn't contain this key, AudioManager should ignore safely.
+    audio.playSfx(String(key), { volume: 1.0 });
   });
 
   // first layout
@@ -146,7 +159,7 @@ async function boot(){
     hud.setCalendar(now);
     hud.setClockHands(now);
 
-    // ✅ Audio follows state (starts silent; user must tap buttons)
+    // Audio follows state (starts silent; user must tap buttons)
     audio.applyStoryState(now, nextState);
 
     requestAnimationFrame(tick);

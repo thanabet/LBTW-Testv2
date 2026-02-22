@@ -43,24 +43,23 @@
     {
       "name": "bird_rand_1",
       "clip": "bird_perch_once",
-      "activeBetween": { "start": "05:00", "end": "19:00" },
+      "activeBetween": { "start": "06:00", "end": "19:00" },
       "intervalSec": { "min": 60, "max": 300 },
       "skipWhenRain": true
     },
     {
       "name": "bird_rand_2",
       "clip": "bird_perch_once",
-      "activeBetween": { "start": "05:00", "end": "19:00" },
+      "activeBetween": { "start": "06:00", "end": "19:00" },
       "intervalSec": { "min": 120, "max": 300 },
       "skipWhenRain": true
     },
     {
       "name": "bird_rand_3",
       "clip": "bird_perch_once",
-      "activeBetween": { "start": "05:00", "end": "19:00" },
+      "activeBetween": { "start": "06:00", "end": "19:00" },
       "intervalSec": { "min": 300, "max": 300 },
       "skipWhenRain": true
     }
   ]
-
 }

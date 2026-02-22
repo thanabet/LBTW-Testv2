@@ -3,6 +3,7 @@ import { CloudManager } from "./cloudManager.js";
 import { RainManager } from "./rainManager.js";
 import { RoomManager } from "./roomManager.js";
 import { RoomFxManager } from "./roomFxManager.js";
+import { ActorManager } from "./actorManager.js"; // NEW
 
 const CLOUD_PROFILE_FADE_SEC = 60.0;
 
@@ -41,19 +42,27 @@ export class SceneEngine {
     this.room = null;
     this._roomReady = false;
 
-    // room fx layer (NEW) - above room, below rain
+    // room fx layer - above room, below actors/rain
     this.roomFxContainer = null;
     this.roomFx = null;
     this._roomFxReady = false;
     this._hasSetInitialRoomFx = false;
 
-    // ✅ remember current lightning state to avoid spamming setters
+    // NEW: actors layer (interactive) - above roomFx, below rain
+    this.actorContainer = null;
+    this.actors = null;
+    this._actorsReady = false;
+
+    // remember current lightning state to avoid spamming setters
     this._lastLightningEnabled = null;
 
     this.skyContainer = null;
     this.sceneRectPx = null;
 
     this._maskG = null;
+
+    // pointer handler binding
+    this._boundPointerTap = null;
   }
 
   _percentRectToPx(rectPct, w, h){
@@ -82,14 +91,16 @@ export class SceneEngine {
     this.skyContainer = new PIXI.Container();
     this.cloudContainer = new PIXI.Container();
     this.roomContainer = new PIXI.Container();
-    this.roomFxContainer = new PIXI.Container(); // NEW
+    this.roomFxContainer = new PIXI.Container();
+    this.actorContainer = new PIXI.Container(); // NEW
     this.rainContainer = new PIXI.Container();
 
-    // order: sky -> clouds -> room -> roomFx -> rain (rain/lightning always top)
+    // order: sky -> clouds -> room -> roomFx -> actors -> rain
     this.app.stage.addChild(this.skyContainer);
     this.app.stage.addChild(this.cloudContainer);
     this.app.stage.addChild(this.roomContainer);
-    this.app.stage.addChild(this.roomFxContainer); // NEW: above room
+    this.app.stage.addChild(this.roomFxContainer);
+    this.app.stage.addChild(this.actorContainer); // NEW: interactive actors
     this.app.stage.addChild(this.rainContainer);
 
     // 2 alpha layers for clouds
@@ -101,6 +112,24 @@ export class SceneEngine {
     // initial visibility (A visible)
     this.cloudLayerA.alpha = 1;
     this.cloudLayerB.alpha = 0;
+
+    // Enable pointer events safely (for interactive actors)
+    this.app.stage.eventMode = "static";
+    this.app.stage.hitArea = this.app.screen;
+
+    // one handler only
+    if(!this._boundPointerTap){
+      this._boundPointerTap = (e) => {
+        if(!this._actorsReady || !this.actors) return;
+
+        // PIXI FederatedPointerEvent: e.global has stage coords
+        const gx = e.global?.x ?? 0;
+        const gy = e.global?.y ?? 0;
+
+        this.actors.onPointerTap(gx, gy);
+      };
+      this.app.stage.on("pointertap", this._boundPointerTap);
+    }
   }
 
   async initSky(arg){
@@ -182,6 +211,20 @@ export class SceneEngine {
 
     if(this.sceneRectPx){
       this.roomFx.resizeToRect(this.sceneRectPx);
+    }
+  }
+
+  // NEW
+  async initActors(actorsConfig){
+    await this._ensurePixi();
+
+    this.actors = new ActorManager(this.actorContainer);
+    await this.actors.load(actorsConfig);
+
+    this._actorsReady = true;
+
+    if(this.sceneRectPx){
+      this.actors.resizeToRect(this.sceneRectPx);
     }
   }
 
@@ -285,14 +328,18 @@ export class SceneEngine {
     if(this.cloudsB) this.cloudsB.resizeToRect(this.sceneRectPx);
 
     if(this.room) this.room.resizeToRect(this.sceneRectPx);
-
     if(this.roomFx) this.roomFx.resizeToRect(this.sceneRectPx);
 
+    if(this._actorsReady && this.actors){
+      this.actors.resizeToRect(this.sceneRectPx);
+    }
+
     if(this.rain) this.rain.resizeToRect(this.sceneRectPx);
+
+    // update hitArea for pointer events (screen changes when resized)
+    this.app.stage.hitArea = this.app.screen;
   }
 
-  // rain override:
-  // storyState.rain or storyState.state.rain (true/false/undefined)
   _resolveRainEnabled(profile, storyState){
     const override =
       (storyState?.rain !== undefined) ? storyState.rain :
@@ -306,7 +353,6 @@ export class SceneEngine {
     return (p === "overcast");
   }
 
-  // lightning override:
   _resolveLightningEnabled(storyState){
     const override =
       (storyState?.lightning !== undefined) ? storyState.lightning :
@@ -368,25 +414,27 @@ export class SceneEngine {
       this.room.update(now, dtSec, storyState);
     }
 
-    // room fx – must reflect story instantly on refresh too
+    // room fx
     if(this._roomFxReady && this.roomFx){
       if(!this._hasSetInitialRoomFx){
         this.setInitialRoomFxState(storyState);
       } else {
         this.roomFx.applyStoryState(storyState, { immediate: false });
       }
-
-      // ✅ CHANGE: pass now + storyState so random layers can work
       this.roomFx.update(now, dtSec, storyState);
     }
 
-    // rain + lightning auto/override (top-most)
+    // actors (interactive)
+    if(this._actorsReady && this.actors){
+      this.actors.update(now, dtSec, storyState);
+    }
+
+    // rain + lightning top
     if(this._rainReady && this.rain){
       const rainOn = this._resolveRainEnabled(profile, storyState);
       this.rain.setEnabled(rainOn);
 
       const lightningOn = this._resolveLightningEnabled(storyState);
-
       if(this._lastLightningEnabled !== lightningOn){
         this.rain.setLightningEnabled(lightningOn);
         this._lastLightningEnabled = lightningOn;
